@@ -1,0 +1,1011 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Captura de Precios</title>
+    <!-- Metaetiquetas para PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="description" content="App para capturar precios de productos y competidores">
+    <!-- Manifiesto PWA (archivo externo) -->
+    <link rel="manifest" href="./manifest.json">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React y ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.44.2/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            overscroll-behavior: none;
+            background: linear-gradient(to bottom, #EEF2FF, #E5E7EB);
+        }
+        @media (max-width: 640px) {
+            .container { padding: 0.5rem; }
+            button, select, input, textarea { font-size: 1rem; min-height: 48px; }
+            .btn-icon { width: 48px; height: 48px; }
+        }
+        button, select, input, textarea {
+            transition: all 0.2s ease-in-out;
+        }
+        button:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+        .card {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 1rem;
+        }
+        .input-focus:focus {
+            outline: none;
+            box-shadow: 0 0 8px rgba(79, 70, 229, 0.3);
+            border-color: #4F46E5;
+        }
+        .btn-primary {
+            background: linear-gradient(to right, #4F46E5, #7C3AED);
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(to right, #4338CA, #6D28D9);
+        }
+        .error-text {
+            @apply text-red-600 text-xs mt-1;
+        }
+        .dropdown-menu {
+            max-height: 400px; /* Aumentado para acomodar 20 ítems */
+            overflow-y: auto;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { createRoot } = ReactDOM;
+        // Error Boundary
+        class ErrorBoundary extends React.Component {
+            state = { error: null };
+            static getDerivedStateFromError(error) {
+                return { error: error.message };
+            }
+            render() {
+                if (this.state.error) {
+                    return (
+                        <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
+                            <div className="w-full max-w-md bg-white card p-6">
+                                <h2 className="text-xl font-bold text-red-600 mb-4">Error</h2>
+                                <p className="text-gray-600 text-sm">{this.state.error}</p>
+                            </div>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+        // Configuración Supabase
+        const supabaseUrl = 'https://djjylikkocemrlsjxscr.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanlsaWtrb2NlbXJsc2p4c2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNjUyNDEsImV4cCI6MjA3ODc0MTI0MX0.fnv1BKn_o-PYEAPljG0V3dt3b2Uifwn8EEzkP8Aab3M';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        // Componente: Top 5 Promotores del Día
+        const TopSellers = () => {
+            const [topSellers, setTopSellers] = useState([]);
+            const [loading, setLoading] = useState(true);
+            useEffect(() => {
+                const fetchTopSellers = async () => {
+                    setLoading(true);
+                    try {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const startDate = today.toISOString();
+                        const { data, error } = await supabase
+                            .from('web_precios')
+                            .select('promoter_name')
+                            .gte('created_at', startDate);
+                        if (error) throw error;
+                        const counts = data.reduce((acc, item) => {
+                            acc[item.promoter_name] = (acc[item.promoter_name] || 0) + 1;
+                            return acc;
+                        }, {});
+                        const sorted = Object.entries(counts)
+                            .map(([name, count]) => ({ name, count }))
+                            .sort((a, b) => b.count - a.count)
+                            .slice(0, 5);
+                        setTopSellers(sorted);
+                    } catch (e) {
+                        console.error('Error al cargar top del día:', e);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                fetchTopSellers();
+            }, []);
+            return (
+                <div className="bg-white card p-5 mb-6 shadow-md">
+                    <h3 className="text-lg font-bold text-indigo-700 mb-4 text-center">🔥 Top 5 del Día</h3>
+                    {loading ? (
+                        <p className="text-gray-500 text-sm text-center">Cargando ranking...</p>
+                    ) : topSellers.length > 0 ? (
+                        <ol className="space-y-3">
+                            {topSellers.map((seller, index) => {
+                                const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`;
+                                return (
+                                    <li key={seller.name} className="flex justify-between items-center px-4 py-2 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-lg">{medal}</span>
+                                            <span className="font-medium">{seller.name}</span>
+                                        </div>
+                                        <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold">
+                                            {seller.count} visita(s)
+                                        </span>
+                                    </li>
+                                );
+                            })}
+                        </ol>
+                    ) : (
+                        <p className="text-gray-500 text-sm text-center">No hay visitas hoy.</p>
+                    )}
+                </div>
+            );
+        };
+        // Componente: Posición del usuario en el ranking
+        const UserRank = ({ promoterName }) => {
+            const [rank, setRank] = useState(null);
+            const [total, setTotal] = useState(0);
+            const [loading, setLoading] = useState(true);
+            useEffect(() => {
+                const fetchUserRank = async () => {
+                    setLoading(true);
+                    try {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const startDate = today.toISOString();
+                        const { data, error } = await supabase
+                            .from('web_precios')
+                            .select('promoter_name')
+                            .gte('created_at', startDate);
+                        if (error) throw error;
+                        const counts = data.reduce((acc, item) => {
+                            acc[item.promoter_name] = (acc[item.promoter_name] || 0) + 1;
+                            return acc;
+                        }, {});
+                        const sortedNames = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+                        const userIndex = sortedNames.indexOf(promoterName);
+                        const userRank = userIndex !== -1 ? userIndex + 1 : null;
+                        setRank(userRank);
+                        setTotal(sortedNames.length);
+                    } catch (e) {
+                        console.error('Error al cargar tu posición:', e);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                fetchUserRank();
+            }, [promoterName]);
+            return (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-6 border border-blue-100">
+                    <h3 className="text-sm font-bold text-blue-700 mb-2">📊 Tu Posición Nacional</h3>
+                    {loading ? (
+                        <p className="text-gray-500 text-sm">Cargando tu ranking...</p>
+                    ) : rank ? (
+                        <p className="text-gray-700 text-sm">
+                            Hoy estás en el puesto <span className="font-bold text-blue-600">#{rank}</span> de <strong>{total}</strong> promotores.
+                            {rank === 1 && " 🏆 ¡Eres el líder del día!"}
+                        </p>
+                    ) : (
+                        <p className="text-gray-500 text-sm">
+                            Aún no tienes visitas hoy. ¡Haz tu primera captura para entrar al ranking!
+                        </p>
+                    )}
+                </div>
+            );
+        };
+        // Pantalla de Login
+        const LoginScreen = ({ onLogin }) => {
+            const [promoterId, setPromoterId] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError(null);
+                try {
+                    const { data, error } = await supabase
+                        .from('web_promotores')
+                        .select('promoter_name, estado_id')
+                        .eq('promoter_id', promoterId)
+                        .single();
+                    if (error) {
+                        setError('ID de promotor no encontrado.');
+                    } else {
+                        let estadoNombre = '', zonaNombre = promoterId.replace('promotor_', '').replace(/_/g, '-');
+                        if (data.estado_id) {
+                            const { data: estadoData } = await supabase
+                                .from('web_estados')
+                                .select('nombre')
+                                .eq('id', data.estado_id)
+                                .single();
+                            estadoNombre = estadoData?.nombre || '';
+                            const { data: zonaData } = await supabase
+                                .from('web_zonas')
+                                .select('nombre')
+                                .eq('nombre', `Zona ${zonaNombre}`)
+                                .eq('estado_id', data.estado_id)
+                                .single();
+                            zonaNombre = zonaData?.nombre.replace('Zona ', '') || '';
+                        }
+                        onLogin(promoterId, data.promoter_name, estadoNombre, zonaNombre);
+                    }
+                } catch (e) {
+                    setError('Error al iniciar sesión.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
+                    <div className="w-full max-w-md bg-white card p-6">
+                        {/* Top 5 del día */}
+                        <TopSellers />
+                        <h1 className="text-2xl font-extrabold text-center text-indigo-700 mb-4">Ingresa tu ID</h1>
+                        <p className="text-center text-gray-600 mb-6 text-sm">Ingresa tu ID de promotor para continuar.</p>
+                        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+                            <input type="text" placeholder="ID de promotor" value={promoterId}
+                                   onChange={(e) => setPromoterId(e.target.value)}
+                                   className="w-full p-3 border border-gray-300 rounded-xl input-focus" required />
+                            <button type="submit" disabled={loading}
+                                    className="w-full btn-primary text-white font-semibold py-3 rounded-xl shadow-md flex items-center justify-center gap-2 disabled:bg-indigo-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                                    <polyline points="10 17 15 12 10 7"/>
+                                    <line x1="15" x2="3" y1="12" y2="12"/>
+                                </svg>
+                                {loading ? 'Cargando...' : 'Ingresar'}
+                            </button>
+                        </form>
+                        {error && (
+                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mt-4 rounded-lg text-sm">
+                                {error}
+                            </div>
+                        )}
+                        {/* Versión */}
+                        <div className="text-center text-gray-500 text-xs mt-6">Versión 1.5</div>
+                    </div>
+                </div>
+            );
+        };
+        // Iconos SVG
+        const Icon = ({ children, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                 className={`lucide ${className}`}>
+                {children}
+            </svg>
+        );
+        const Plus = ({ size }) => (
+            <Icon size={size}>
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+            </Icon>
+        );
+        const Minus = ({ size }) => (
+            <Icon size={size}>
+                <path d="M5 12h14" />
+            </Icon>
+        );
+        const Save = ({ size }) => (
+            <Icon size={size}>
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+            </Icon>
+        );
+        // Fila de ítem con validación de precio
+        const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, isMyItem, onToggleOutOfStock, isOutOfStock }) => {
+            const handleChange = (e) => {
+                const { value } = e.target;
+                onChange(e, type, item.id, 'price');
+                // Limpiar error al cambiar
+                if (errors[item.id]) {
+                    setErrors(prev => {
+                        const newErr = { ...prev };
+                        delete newErr[item.id];
+                        return newErr;
+                    });
+                }
+            };
+            const isNoStockPresentation = item.presentation === 'SIN STOCK';
+            const disableFields = isNoStockPresentation;
+            return (
+                <div className="flex flex-col sm:flex-row gap-2 mb-2 p-2 bg-gray-50 rounded-lg card">
+                    <select value={item.presentation} onChange={(e) => onChange(e, type, item.id, 'presentation')}
+                            className="w-full sm:w-1/2 p-3 border border-gray-300 rounded-xl input-focus" required>
+                        <option value="">-- Presentación --</option>
+                        {presentations.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <input type="number" placeholder="Precio por Unidad" value={item.price}
+                           onChange={handleChange}
+                           disabled={disableFields}
+                           className={`w-full sm:w-1/4 p-3 border rounded-xl input-focus ${errors[item.id] ? 'border-red-500' : 'border-gray-300'} ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`} required={!disableFields} />
+                    <select value={item.currency} onChange={(e) => onChange(e, type, item.id, 'currency')}
+                            disabled={disableFields}
+                            className={`w-full sm:w-1/4 p-3 border border-gray-300 rounded-xl input-focus ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`} required={!disableFields}>
+                        <option value="">-- Moneda --</option>
+                        {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    {type === 'myitems' && (
+                        <>
+                            <div className="flex flex-col sm:w-1/6">
+                                <input type="number" placeholder="Stock Anaquel (En Unidades)" value={item.stock_shelf}
+                                       onChange={(e) => onChange(e, type, item.id, 'stock_shelf')}
+                                       disabled={isOutOfStock || disableFields}
+                                       className={`w-full p-3 border border-gray-300 rounded-xl input-focus ${(isOutOfStock || disableFields) ? 'bg-gray-200 cursor-not-allowed' : ''}`} required={!isOutOfStock && !disableFields} />
+                            </div>
+                            <div className="flex flex-col sm:w-1/6">
+                                <input type="number" placeholder="Stock Bodega (En Bultos)" value={item.stock_warehouse}
+                                       onChange={(e) => onChange(e, type, item.id, 'stock_warehouse')}
+                                       disabled={isOutOfStock || disableFields}
+                                       className={`w-full p-3 border border-gray-300 rounded-xl input-focus ${(isOutOfStock || disableFields) ? 'bg-gray-200 cursor-not-allowed' : ''}`} required={!isOutOfStock && !disableFields} />
+                            </div>
+                            <div className="flex items-center justify-center sm:w-1/6">
+                                <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+                                    <input type="checkbox" checked={isOutOfStock} onChange={() => onToggleOutOfStock(item.id)}
+                                           disabled={disableFields}
+                                           className={`mr-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded ${disableFields ? 'cursor-not-allowed' : ''}`} />
+                                    SIN STOCK
+                                </label>
+                            </div>
+                        </>
+                    )}
+                    {canRemove && (
+                        <button type="button" onClick={() => onRemove(type, item.id)}
+                                className="btn-icon text-red-600 hover:text-red-800 p-2 rounded-full transition-transform duration-200"
+                                aria-label="Eliminar">
+                            <Minus size={24} />
+                        </button>
+                    )}
+                    {errors[item.id] && (
+                        <div className="error-text col-span-full">{errors[item.id]}</div>
+                    )}
+                </div>
+            );
+        };
+        // Componente de Autocompletado para Clientes (BÚSQUEDA FLEXIBLE - HASTA 20 RESULTADOS)
+        const ClienteAutocomplete = ({ value, onChange }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [clientes, setClientes] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const wrapperRef = useRef(null);
+            const debounceTimer = useRef(null);
+            // Función para buscar clientes usando RPC (búsqueda flexible en cualquier parte del texto)
+            const buscarClientes = async (term = '') => {
+                setLoading(true);
+                try {
+                    const { data, error } = await supabase
+                        .from('web_clientes')
+                        .select('trade_name')
+                        .ilike('trade_name', `%${term}%`)
+                        .limit(20);
+                    if (error) throw error;
+                    setClientes(data || []);
+                } catch (e) {
+                    console.error('Error al buscar clientes:', e);
+                    setClientes([]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            // Efecto para manejar clics fuera del componente
+            useEffect(() => {
+                function handleClickOutside(event) {
+                    if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                        setIsOpen(false);
+                    }
+                }
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => {
+                    document.removeEventListener("mousedown", handleClickOutside);
+                };
+            }, []);
+            // Efecto para buscar cuando cambia el término (con debounce)
+            useEffect(() => {
+                if (debounceTimer.current) {
+                    clearTimeout(debounceTimer.current);
+                }
+                debounceTimer.current = setTimeout(() => {
+                    buscarClientes(searchTerm);
+                }, 300);
+                return () => {
+                    if (debounceTimer.current) {
+                        clearTimeout(debounceTimer.current);
+                    }
+                };
+            }, [searchTerm]);
+            // Manejar cuando se hace clic en el input
+            const handleFocus = () => {
+                setIsOpen(true);
+                if (!searchTerm && value) {
+                    setSearchTerm(value);
+                }
+                if (!searchTerm) {
+                    buscarClientes(''); // Cargar los primeros 20 sin filtro
+                }
+            };
+            // Manejar cambios en el input
+            const handleChange = (e) => {
+                const term = e.target.value;
+                setSearchTerm(term);
+                onChange(term);
+                setIsOpen(true);
+            };
+            // Manejar selección de cliente
+            const handleSelect = (clienteName) => {
+                onChange(clienteName);
+                setSearchTerm(clienteName);
+                setIsOpen(false);
+            };
+            return (
+                <div className="relative" ref={wrapperRef}>
+                    <input
+                        type="text"
+                        placeholder="Nombre del comercio"
+                        value={searchTerm}
+                        onChange={handleChange}
+                        onFocus={handleFocus}
+                        className="w-full p-3 border border-gray-300 rounded-xl input-focus"
+                        required
+                    />
+                    {isOpen && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg dropdown-menu">
+                            {loading ? (
+                                <div className="p-3 text-gray-500 text-sm">
+                                    Buscando comercios...
+                                </div>
+                            ) : clientes.length > 0 ? (
+                                clientes.map((cliente, index) => (
+                                    <div
+                                        key={index}
+                                        className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                        onClick={() => handleSelect(cliente.trade_name)}
+                                    >
+                                        {cliente.trade_name}
+                                    </div>
+                                ))
+                            ) : (
+                                searchTerm ? (
+                                    <div className="p-3 text-gray-500 text-sm">
+                                        No se encontraron comercios que contengan "{searchTerm}"
+                                    </div>
+                                ) : (
+                                    <div className="p-3 text-gray-500 text-sm">
+                                        Escribe para buscar comercios
+                                    </div>
+                                )
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        // Pantalla de Captura de Datos
+        const DataEntryScreen = ({ promoterName, promoterId, initialState, initialZone, newItem, setNewItem, error, setError, successMessage, setSuccessMessage, loading, setLoading }) => {
+            const [presentationsCompetidor, setPresentationsCompetidor] = useState([]);
+            const [presentationsMy, setPresentationsMy] = useState([]);
+            const [estados, setEstados] = useState([]);
+            const [zonas, setZonas] = useState([]);
+            const [filteredZonas, setFilteredZonas] = useState([]);
+            const [dataLoading, setDataLoading] = useState(true);
+            const [comments, setComments] = useState('');
+            const [geoError, setGeoError] = useState(null); // Para error de geolocalización
+            const [priceErrors, setPriceErrors] = useState({}); // Errores de precio por ID
+            const [priceWarning, setPriceWarning] = useState(''); // Nuevo estado para el mensaje de advertencia global
+            const [outOfStockItems, setOutOfStockItems] = useState(new Set()); // IDs de ítems SIN STOCK
+            const [isMayorista, setIsMayorista] = useState(false); // Nuevo estado para checkbox de mayorista
+            const [isClienteCerrado, setIsClienteCerrado] = useState(false); // Nuevo estado para checkbox de cliente cerrado
+            useEffect(() => {
+                const fetchData = async () => {
+                    setDataLoading(true);
+                    try {
+                        const { data: compData } = await supabase.from('web_competidor').select('presentation').order('presentation');
+                        const { data: myData } = await supabase.from('web_myproductos').select('presentation').order('presentation');
+                        const { data: estadosData } = await supabase.from('web_estados').select('id, nombre').order('nombre');
+                        const { data: zonasData } = await supabase.from('web_zonas').select('id, nombre, estado_id').order('nombre');
+                        setPresentationsCompetidor(compData?.map(p => p.presentation) || []);
+                        setPresentationsMy(myData?.map(p => p.presentation) || []);
+                        setEstados(estadosData || []);
+                        setZonas(zonasData || []);
+                        if (initialState) setNewItem(prev => ({ ...prev, state: initialState }));
+                        if (initialZone) setNewItem(prev => ({ ...prev, zone: initialZone }));
+                    } catch (e) {
+                        setError(`Error al cargar datos: ${e.message}`);
+                    } finally {
+                        setDataLoading(false);
+                    }
+                };
+                fetchData();
+            }, [initialState, initialZone]);
+            useEffect(() => {
+                if (newItem.state) {
+                    const estadoId = estados.find(e => e.nombre === newItem.state)?.id;
+                    const filtered = zonas.filter(z => z.estado_id === estadoId).map(z => z.nombre.replace('Zona ', ''));
+                    setFilteredZonas(filtered);
+                    if (newItem.zone && !filtered.includes(newItem.zone)) {
+                        setNewItem(prev => ({ ...prev, zone: '' }));
+                    }
+                } else {
+                    setFilteredZonas([]);
+                }
+            }, [newItem.state, estados, zonas]);
+            const handleInputChange = (e, type, id, field) => {
+                const { value } = e.target;
+                setNewItem(prev => {
+                    let updatedItems = prev[type].map(item => {
+                        if (item.id === id) {
+                            let updatedItem = { ...item, [field]: value };
+                            if (field === 'presentation' && value === 'SIN STOCK') {
+                                updatedItem.price = '';
+                                updatedItem.currency = '';
+                                if (type === 'myitems') {
+                                    updatedItem.stock_shelf = '';
+                                    updatedItem.stock_warehouse = '';
+                                }
+                            }
+                            return updatedItem;
+                        }
+                        return item;
+                    });
+                    return { ...prev, [type]: updatedItems };
+                });
+                if (field === 'presentation' && value === 'SIN STOCK' && type === 'myitems') {
+                    setOutOfStockItems(prev => new Set([...prev, id]));
+                }
+                // Limpiar error si se cambia la moneda o el precio
+                if (priceErrors[id]) {
+                    setPriceErrors(prev => {
+                        const newErr = { ...prev };
+                        delete newErr[id];
+                        return newErr;
+                    });
+                    // También limpiar la advertencia global si se corrige un error
+                    setPriceWarning('');
+                }
+            };
+            const handleAddClick = (type) => {
+                setNewItem(prev => ({
+                    ...prev,
+                    [type]: [...prev[type], { id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }]
+                }));
+            };
+            const handleRemoveClick = (type, id) => {
+                setNewItem(prev => ({
+                    ...prev,
+                    [type]: prev[type].filter(item => item.id !== id)
+                }));
+                // Limpiar error al eliminar
+                if (priceErrors[id]) {
+                    setPriceErrors(prev => {
+                        const newErr = { ...prev };
+                        delete newErr[id];
+                        return newErr;
+                    });
+                    // También limpiar la advertencia global si se elimina un ítem con error
+                    setPriceWarning('');
+                }
+                // Eliminar del set de SIN STOCK si aplica
+                if (type === 'myitems') {
+                    setOutOfStockItems(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(id);
+                        return newSet;
+                    });
+                }
+            };
+            const toggleOutOfStock = (id) => {
+                setOutOfStockItems(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(id)) {
+                        newSet.delete(id);
+                    } else {
+                        newSet.add(id);
+                    }
+                    return newSet;
+                });
+            };
+            const validatePrices = (items, isMayorista) => {
+                let hasError = false;
+                const newErrors = {};
+                items.forEach(item => {
+                    if (item.presentation === 'SIN STOCK') return; // Saltar validación para 'SIN STOCK'
+                    if (!item.price || !item.currency) return;
+                    const price = parseFloat(item.price);
+                    if (isNaN(price)) return;
+                    if (item.currency === 'BS' && (price < 100 || price > 2500)) {
+                        newErrors[item.id] = "El precio en Bs debe estar entre 100 y 2500 Bs.";
+                        hasError = true;
+                    } else if (item.currency === '$') {
+                        if (isMayorista) {
+                            if (price < 0.1 || price > 70) {
+                                newErrors[item.id] = "El precio en $ debe estar entre $0.10 y $70.00 para mayorista.";
+                                hasError = true;
+                            }
+                        } else {
+                            if (price < 0.01 || price > 10) {
+                                newErrors[item.id] = "El precio en $ debe estar entre $0.01 y $10.00.";
+                                hasError = true;
+                            }
+                        }
+                    }
+                });
+                setPriceErrors(newErrors);
+                if (hasError) {
+                    setPriceWarning("❌ Error: Algunos precios están fuera del rango esperado. Corrige los errores antes de guardar.");
+                } else {
+                    setPriceWarning('');
+                }
+                return !hasError; // Devuelve true solo si NO hay errores
+            };
+            const handleSaveData = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError(null);
+                setSuccessMessage(null);
+                setGeoError(null);
+                setPriceWarning(''); // Limpiar advertencia previa
+                if (!isClienteCerrado) {
+                    // Validar precios (ahora bloquea el guardado si hay errores)
+                    const allItems = [...newItem.competitoritems, ...newItem.myitems];
+                    const arePricesValid = validatePrices(allItems, isMayorista);
+                    if (!arePricesValid) {
+                        setLoading(false);
+                        return; // Bloquea el guardado si hay precios fuera de rango
+                    }
+                }
+                // === OBTENER COORDENADAS (obligatorio, pero no bloquea) ===
+                if (!navigator.geolocation) {
+                    setGeoError("Tu dispositivo no soporta geolocalización.");
+                    // No retornamos aquí, permitimos guardar con advertencia
+                }
+                let latitude = null;
+                let longitude = null;
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 15000,
+                            maximumAge: 0,
+                        });
+                    });
+                    latitude = position.coords.latitude;
+                    longitude = position.coords.longitude;
+                } catch (geoError) {
+                    console.warn("Error de geolocalización:", geoError.message);
+                    setGeoError("No se pudo obtener tu ubicación. Activa la geolocalización. De lo contrario, tu visita podría no ser válida.");
+                    // No retornamos aquí, permitimos guardar con advertencia
+                }
+                try {
+                    let errMsg = [];
+                    if (!newItem.state) errMsg.push("Estado");
+                    if (!newItem.zone) errMsg.push("Zona");
+                    if (!newItem.trade) {
+                        errMsg.push("Comercio (selecciona de la lista)");
+                    } else {
+                        const { data: clienteData } = await supabase
+                            .from('web_clientes')
+                            .select('trade_name')
+                            .eq('trade_name', newItem.trade)
+                            .single();
+                        const isValidTrade = clienteData?.trade_name === newItem.trade;
+                        if (!isValidTrade) {
+                            errMsg.push("Comercio (debes seleccionar un comercio válido de la lista)");
+                        }
+                    }
+                    if (errMsg.length > 0) {
+                        setError(`Completa: ${errMsg.join(", ")}.`);
+                        setLoading(false);
+                        return;
+                    }
+                    let validCompetitorItems = [];
+                    let validMyItems = [];
+                    if (!isClienteCerrado) {
+                        validCompetitorItems = newItem.competitoritems.filter(item =>
+                            item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
+                        );
+                        validMyItems = newItem.myitems.filter(item =>
+                            item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
+                        );
+                        if (validCompetitorItems.length === 0 && validMyItems.length === 0) {
+                            setError("Agrega al menos un ítem completo.");
+                            setLoading(false);
+                            return;
+                        }
+                    }
+                    if (isClienteCerrado && !comments.trim()) {
+                        setError("Para cliente cerrado, ingresa un comentario.");
+                        setLoading(false);
+                        return;
+                    }
+                    const visitData = {
+                        promoter_id: promoterId,
+                        promoter_name: promoterName,
+                        state: newItem.state,
+                        zone: newItem.zone,
+                        trade: newItem.trade,
+                        competitoritems: validCompetitorItems.map(item => ({
+                            presentation: item.presentation,
+                            price: item.presentation === 'SIN STOCK' ? null : parseFloat(item.price),
+                            currency: item.presentation === 'SIN STOCK' ? null : item.currency
+                        })),
+                        myitems: validMyItems.map(item => ({
+                            presentation: item.presentation,
+                            price: item.presentation === 'SIN STOCK' ? null : parseFloat(item.price),
+                            currency: item.presentation === 'SIN STOCK' ? null : item.currency,
+                            // Si el ítem está marcado como "SIN STOCK", guardar null en los campos de stock
+                            stock_shelf: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_shelf !== '' ? parseFloat(item.stock_shelf) : null)),
+                            stock_warehouse: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_warehouse !== '' ? parseFloat(item.stock_warehouse) : null))
+                        })),
+                        latitude,
+                        longitude,
+                        comments: comments.trim() || null,
+                        p_mayorista: isMayorista ? 'Si' : 'No',
+                        cliente_cerrado: isClienteCerrado ? 'Si' : 'No',
+                    };
+                    if (navigator.onLine) {
+                        const { error } = await supabase.from('web_precios').insert([visitData]);
+                        if (error) throw error;
+                        setComments('');
+                        setIsMayorista(false); // Reset checkbox
+                        setIsClienteCerrado(false); // Reset checkbox
+                        setNewItem({
+                            state: initialState || '',
+                            zone: initialZone || '',
+                            trade: '',
+                            competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
+                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                        });
+                        setOutOfStockItems(new Set()); // Resetear el set de SIN STOCK
+                        setSuccessMessage("✅ Datos, ubicación y comentarios guardados con éxito.");
+                    } else {
+                        // Guardar offline en IndexedDB
+                        const db = await openDB();
+                        await db.add('pendientes', visitData);
+                        setSuccessMessage("✅ Guardado offline. Se sincronizará al conectar.");
+                        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                            const sw = await navigator.serviceWorker.ready;
+                            sw.sync.register('sync-visitas');
+                        }
+                        setComments('');
+                        setIsMayorista(false);
+                        setIsClienteCerrado(false);
+                        setNewItem({
+                            state: initialState || '',
+                            zone: initialZone || '',
+                            trade: '',
+                            competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
+                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                        });
+                        setOutOfStockItems(new Set());
+                    }
+                } catch (e) {
+                    console.error("Error al guardar:", e);
+                    setError(`Error al guardar: ${e.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            return (
+                <div className="min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-2 sm:p-4 flex flex-col items-center">
+                    <div className="container w-full max-w-md bg-white card p-4 sm:p-6">
+                        <h1 className="text-xl sm:text-2xl font-extrabold text-center text-indigo-700 mb-4">Ingreso de Precios</h1>
+                        <p className="text-center text-gray-600 mb-4 text-sm">
+                            Bienvenido, <span className="font-semibold text-indigo-600">{promoterName}</span>
+                        </p>
+                        {/* Posición del usuario */}
+                        <UserRank promoterName={promoterName} />
+                        {/* === NUEVO: Mostrar advertencia de precios AQUÍ, arriba del formulario === */}
+                        {priceWarning && (
+                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-lg text-sm">
+                                {priceWarning}
+                            </div>
+                        )}
+                        {error && (
+                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-lg text-sm">
+                                {error}
+                            </div>
+                        )}
+                        {successMessage && (
+                            <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-3 mb-4 rounded-lg text-sm">
+                                {successMessage}
+                            </div>
+                        )}
+                        {geoError && (
+                            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 mb-4 rounded-lg text-sm">
+                                {geoError}
+                            </div>
+                        )}
+                        {dataLoading && <div className="text-center text-gray-600 text-sm">Cargando...</div>}
+                        <form onSubmit={handleSaveData} className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-2">
+                                <label className="block">
+                                    <span className="text-gray-700 font-semibold text-sm">Estado</span>
+                                    <select value={newItem.state} onChange={(e) => setNewItem(prev => ({ ...prev, state: e.target.value }))}
+                                            className="w-full p-3 border border-gray-300 rounded-xl input-focus" required disabled={!!initialState}>
+                                        <option value="">-- Estado --</option>
+                                        {estados.map(e => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
+                                    </select>
+                                </label>
+                                <label className="block">
+                                    <span className="text-gray-700 font-semibold text-sm">Zona</span>
+                                    <select value={newItem.zone} onChange={(e) => setNewItem(prev => ({ ...prev, zone: e.target.value }))}
+                                            className="w-full p-3 border border-gray-300 rounded-xl input-focus" required disabled={!!initialZone}>
+                                        <option value="">-- Zona --</option>
+                                        {filteredZonas.map(z => <option key={z} value={z}>{z}</option>)}
+                                    </select>
+                                </label>
+                                <label className="block">
+                                    <span className="text-gray-700 font-semibold text-sm">Comercio</span>
+                                    <ClienteAutocomplete
+                                        value={newItem.trade}
+                                        onChange={(value) => setNewItem(prev => ({ ...prev, trade: value }))}
+                                    />
+                                </label>
+                            </div>
+                            <div className="flex items-center">
+                                <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+                                    <input type="checkbox" checked={isMayorista} onChange={(e) => setIsMayorista(e.target.checked)}
+                                           className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                                    Precios Mayoristas
+                                </label>
+                            </div>
+                            <div className="flex items-center">
+                                <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+                                    <input type="checkbox" checked={isClienteCerrado} onChange={(e) => setIsClienteCerrado(e.target.checked)}
+                                           className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                                    Cliente Cerrado
+                                </label>
+                            </div>
+                            {!isClienteCerrado && (
+                                <>
+                                    <div>
+                                        <span className="text-gray-700 font-bold text-sm">Precios Competencia por Unidad</span>
+                                        {newItem.competitoritems.map(item => (
+                                            <ItemRow key={item.id} item={item} type="competitoritems" onChange={handleInputChange}
+                                                     onRemove={handleRemoveClick} presentations={presentationsCompetidor}
+                                                     currencies={['BS', '$', 'Pesos']} canRemove={newItem.competitoritems.length > 1}
+                                                     errors={priceErrors} setErrors={setPriceErrors} />
+                                        ))}
+                                        <div className="flex justify-end mt-2">
+                                            <button type="button" onClick={() => handleAddClick('competitoritems')}
+                                                    className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200">
+                                                <Plus size={24} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-700 font-bold text-sm">Nuestros Precios por Unidad</span>
+                                        {newItem.myitems.map(item => (
+                                            <ItemRow key={item.id} item={item} type="myitems" onChange={handleInputChange}
+                                                     onRemove={handleRemoveClick} presentations={presentationsMy}
+                                                     currencies={['BS', '$', 'Pesos']} canRemove={newItem.myitems.length > 1}
+                                                     errors={priceErrors} setErrors={setPriceErrors} isMyItem={true}
+                                                     onToggleOutOfStock={toggleOutOfStock} isOutOfStock={outOfStockItems.has(item.id)} />
+                                        ))}
+                                        <div className="flex justify-end mt-2">
+                                            <button type="button" onClick={() => handleAddClick('myitems')}
+                                                    className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200">
+                                                <Plus size={24} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                            <div className="flex flex-col">
+                                <label className="text-gray-700 font-semibold text-sm mb-1">Comentarios {isClienteCerrado ? '(requerido)' : '(opcional)'}</label>
+                                <textarea
+                                    value={comments}
+                                    onChange={(e) => setComments(e.target.value)}
+                                    placeholder="Describe alguna situación (ej: producto agotado, competidor SIN STOCK, etc.)"
+                                    className="w-full p-3 border border-gray-300 rounded-xl input-focus h-20 resize-none"
+                                    required={isClienteCerrado}
+                                />
+                            </div>
+                            <button type="submit" disabled={loading || dataLoading}
+                                    className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
+                                <Save size={24} />
+                                {loading ? 'Guardando...' : 'Guardar Datos'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+        // App Principal
+        const App = () => {
+            const [promoterId, setPromoterId] = useState('');
+            const [promoterName, setPromoterName] = useState('');
+            const [initialState, setInitialState] = useState('');
+            const [initialZone, setInitialZone] = useState('');
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [successMessage, setSuccessMessage] = useState(null);
+            const [newItem, setNewItem] = useState({
+                state: '',
+                zone: '',
+                trade: '',
+                competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
+                myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+            });
+            useEffect(() => {
+                // Registrar Service Worker para PWA offline
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(reg => console.log('SW registered!', reg))
+                        .catch(err => console.error('SW registration failed', err));
+                }
+            }, []);
+            const handleLogin = (id, name, estadoNombre, zonaNombre) => {
+                setPromoterId(id);
+                setPromoterName(name);
+                setInitialState(estadoNombre);
+                setInitialZone(zonaNombre);
+                setNewItem(prev => ({ ...prev, state: estadoNombre, zone: zonaNombre }));
+                setIsLoggedIn(true);
+            };
+            return (
+                <ErrorBoundary>
+                    <div className="font-sans antialiased">
+                        {!isLoggedIn ? (
+                            <LoginScreen onLogin={handleLogin} />
+                        ) : (
+                            <DataEntryScreen
+                                promoterName={promoterName}
+                                promoterId={promoterId}
+                                initialState={initialState}
+                                initialZone={initialZone}
+                                newItem={newItem}
+                                setNewItem={setNewItem}
+                                error={error}
+                                setError={setError}
+                                successMessage={successMessage}
+                                setSuccessMessage={setSuccessMessage}
+                                loading={loading}
+                                setLoading={setLoading}
+                            />
+                        )}
+                    </div>
+                </ErrorBoundary>
+            );
+        };
+        // Renderizar
+        try {
+            const container = document.getElementById('root');
+            if (container) {
+                const root = createRoot(container);
+                root.render(<App />);
+            }
+        } catch (e) {
+            console.error('Error al renderizar:', e);
+        }
+        // Función para abrir IndexedDB (para offline)
+        async function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('chispaDB', 1);
+                request.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    db.createObjectStore('pendientes', { autoIncrement: true });
+                };
+                request.onsuccess = e => resolve(e.target.result);
+                request.onerror = e => reject(e.target.error);
+            });
+        }
+    </script>
+</body>
+</html>
