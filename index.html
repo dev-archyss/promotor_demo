@@ -253,7 +253,7 @@
                         setLoading(false);
                         return;
                     }
-                    // Obtener estado y zona
+                    // Obtener estado y zona (globales, sin filtro por empresa_id)
                     let estadoNombre = '', zonaNombre = '';
                    
                     if (promotorData.estado_id) {
@@ -277,7 +277,7 @@
                             zonaNombre = zonaData.nombre.replace('Zona ', '');
                         }
                     } else {
-                        // Intentar obtener zona del nombre del promotor como fallback
+                        // Fallback por nombre del promotor
                         const zonaNumero = promoterId.replace('promotor_', '').replace(/_/g, '-');
                         const { data: zonaFallback } = await supabase
                             .from('web_zonas')
@@ -731,7 +731,7 @@
             const [outOfStockItems, setOutOfStockItems] = useState(new Set());
             const [isMayorista, setIsMayorista] = useState(false);
             const [isClienteCerrado, setIsClienteCerrado] = useState(false);
-            // Cargar datos específicos de la empresa
+            // Cargar datos (estados y zonas globales)
             useEffect(() => {
                 const fetchData = async () => {
                     setDataLoading(true);
@@ -748,6 +748,7 @@
                             .eq('empresa_id', empresa.id)
                             .order('presentation');
                        
+                        // Estados y zonas GLOBALES (sin filtro por empresa_id)
                         const { data: estadosData } = await supabase
                             .from('web_estados')
                             .select('id, nombre')
@@ -1017,7 +1018,7 @@
                         setIsClienteCerrado(false);
                         setNewItem({
                             state: initialState || '',
-                            zone: initialZone || '',
+                            zone: '',
                             trade: '',
                             competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
                             myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
@@ -1034,7 +1035,7 @@
                         setIsClienteCerrado(false);
                         setNewItem({
                             state: initialState || '',
-                            zone: initialZone || '',
+                            zone: '',
                             trade: '',
                             competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
                             myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
