@@ -142,7 +142,7 @@
                 try {
                     const { data, error } = await supabase
                         .from('empresas')
-                        .select('id, nombre, gramaje_base_analisis, unidad_base_analisis')
+                        .select('id, nombre, gramaje_base_analisis, unidad_base_analisis, planogram_image')
                         .eq('nombre', empresaNombre)
                         .eq('clave_acceso', claveAcceso)
                         .single();
@@ -153,7 +153,8 @@
                             id: data.id,
                             nombre: data.nombre,
                             gramajeBase: data.gramaje_base_analisis,
-                            unidadBase: data.unidad_base_analisis
+                            unidadBase: data.unidad_base_analisis,
+                            planogramImage: data.planogram_image
                         });
                     }
                 } catch (e) {
@@ -570,6 +571,28 @@
                                     required={!isOutOfStock && !disableFields}
                                 />
                             </div>
+                            <div className="flex flex-col sm:w-1/6">
+                                <input
+                                    type="number"
+                                    placeholder="Caras Antes"
+                                    value={item.faces_before}
+                                    onChange={(e) => onChange(e, type, item.id, 'faces_before')}
+                                    disabled={disableFields}
+                                    className={`w-full p-3 border border-gray-300 rounded-xl input-focus ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
+                                    required={!disableFields}
+                                />
+                            </div>
+                            <div className="flex flex-col sm:w-1/6">
+                                <input
+                                    type="number"
+                                    placeholder="Caras Después"
+                                    value={item.faces_after}
+                                    onChange={(e) => onChange(e, type, item.id, 'faces_after')}
+                                    disabled={disableFields}
+                                    className={`w-full p-3 border border-gray-300 rounded-xl input-focus ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
+                                    required={!disableFields}
+                                />
+                            </div>
                             <div className="flex items-center justify-center sm:w-1/6">
                                 <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                     <input
@@ -737,6 +760,7 @@
             return (
                 <div className="mb-4">
                     <h3 className="text-gray-700 font-bold text-sm mb-2">{label}</h3>
+                    <p className="text-gray-600 text-sm mb-2">Asegúrate de que las fotos muestren claramente todas las caras del anaquel.</p>
                     <input 
                         type="file" 
                         accept="image/*" 
@@ -774,6 +798,7 @@
             const [beforePhotos, setBeforePhotos] = useState([]);
             const [afterPhotos, setAfterPhotos] = useState([]);
             const [sessionData, setSessionData] = useState(null);
+            const [planogramUrl, setPlanogramUrl] = useState('');
             // Cargar datos (estados y zonas globales)
             useEffect(() => {
                 const fetchData = async () => {
@@ -854,7 +879,7 @@
                             zone: '',
                             trade: '',
                             competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
                         });
                         setBeforePhotos(ongoingVisit.before_photos || []);
                         setAfterPhotos(ongoingVisit.after_photos || []);
@@ -932,6 +957,8 @@
                                 if (type === 'myitems') {
                                     updatedItem.stock_shelf = '';
                                     updatedItem.stock_warehouse = '';
+                                    updatedItem.faces_before = '';
+                                    updatedItem.faces_after = '';
                                 }
                             }
                             return updatedItem;
@@ -961,7 +988,9 @@
                         price: '',
                         currency: '',
                         stock_shelf: '',
-                        stock_warehouse: ''
+                        stock_warehouse: '',
+                        faces_before: '',
+                        faces_after: ''
                     }]
                 }));
             };
@@ -1162,7 +1191,9 @@
                             price: item.presentation === 'SIN STOCK' ? null : parseFloat(item.price),
                             currency: item.presentation === 'SIN STOCK' ? null : item.currency,
                             stock_shelf: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_shelf !== '' ? parseFloat(item.stock_shelf) : null)),
-                            stock_warehouse: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_warehouse !== '' ? parseFloat(item.stock_warehouse) : null))
+                            stock_warehouse: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_warehouse !== '' ? parseFloat(item.stock_warehouse) : null)),
+                            faces_before: item.presentation === 'SIN STOCK' ? null : (item.faces_before !== '' ? parseInt(item.faces_before) : null),
+                            faces_after: item.presentation === 'SIN STOCK' ? null : (item.faces_after !== '' ? parseInt(item.faces_after) : null)
                         })),
                         latitude,
                         longitude,
@@ -1205,7 +1236,7 @@
                             zone: '',
                             trade: '',
                             competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
                         });
                         setOutOfStockItems(new Set());
                         setBeforePhotos([]);
@@ -1241,7 +1272,7 @@
                             zone: '',
                             trade: '',
                             competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
                         });
                         setOutOfStockItems(new Set());
                         setBeforePhotos([]);
@@ -1507,7 +1538,7 @@
                 zone: '',
                 trade: '',
                 competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
             });
             const handleEmpresaLogin = (empresaData) => {
                 setEmpresa(empresaData);
@@ -1537,7 +1568,7 @@
                     zone: '',
                     trade: '',
                     competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
                 });
                 setError(null);
                 setSuccessMessage(null);
