@@ -69,12 +69,12 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
         const { createRoot } = ReactDOM;
-       
+      
         // Configuración Supabase
         const supabaseUrl = 'https://djjylikkocemrlsjxscr.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanlsaWtrb2NlbXJsc2p4c2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNjUyNDEsImV4cCI6MjA3ODc0MTI0MX0.fnv1BKn_o-PYEAPljG0V3dt3b2Uifwn8EEzkP8Aab3M';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-       
+      
         // Error Boundary
         class ErrorBoundary extends React.Component {
             state = { error: null };
@@ -121,6 +121,12 @@
                 <polyline points="7 3 7 8 15 8" />
             </Icon>
         );
+        const Camera = ({ size }) => (
+            <Icon size={size}>
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                <circle cx="12" cy="13" r="3" />
+            </Icon>
+        );
         // ============================================
         // PANTALLA 1: LOGIN DE EMPRESA
         // ============================================
@@ -165,7 +171,7 @@
                         <p className="text-center text-gray-600 mb-6 text-sm">
                             Acceso exclusivo para empresas registradas.
                         </p>
-                       
+                      
                         <form onSubmit={handleLogin} className="flex flex-col gap-4">
                             <div>
                                 <label className="block text-gray-700 text-sm font-semibold mb-1">
@@ -180,7 +186,7 @@
                                     required
                                 />
                             </div>
-                           
+                          
                             <div>
                                 <label className="block text-gray-700 text-sm font-semibold mb-1">
                                     Clave de Acceso
@@ -194,7 +200,7 @@
                                     required
                                 />
                             </div>
-                           
+                          
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -208,13 +214,13 @@
                                 {loading ? 'Verificando...' : 'Acceder'}
                             </button>
                         </form>
-                       
+                      
                         {error && (
                             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mt-4 rounded-lg text-sm">
                                 {error}
                             </div>
                         )}
-                       
+                      
                         <div className="text-center text-gray-500 text-xs mt-6">
                             Versión 2.0 • Sistema por Empresa
                         </div>
@@ -255,7 +261,7 @@
                     }
                     // Obtener estado y zona (globales, sin filtro por empresa_id)
                     let estadoNombre = '', zonaNombre = '';
-                   
+                  
                     if (promotorData.estado_id) {
                         const { data: estadoData } = await supabase
                             .from('web_estados')
@@ -264,7 +270,7 @@
                             .single();
                         estadoNombre = estadoData?.nombre || '';
                     }
-                   
+                  
                     // Obtener zona asociada al promotor
                     if (promotorData.zona_id) {
                         const { data: zonaData } = await supabase
@@ -272,7 +278,7 @@
                             .select('nombre')
                             .eq('id', promotorData.zona_id)
                             .single();
-                       
+                      
                         if (zonaData) {
                             zonaNombre = zonaData.nombre.replace('Zona ', '');
                         }
@@ -284,14 +290,14 @@
                             .select('nombre')
                             .ilike('nombre', `%${zonaNumero}%`)
                             .single();
-                       
+                      
                         if (zonaFallback) {
                             zonaNombre = zonaFallback.nombre.replace('Zona ', '');
                         }
                     }
-                   
+                  
                     onPromotorLogin(promotorData.promoter_id, promotorData.promoter_name, estadoNombre, zonaNombre);
-                   
+                  
                 } catch (e) {
                     console.error('Error de login:', e);
                     setError('Error al iniciar sesión. Verifica tus credenciales.');
@@ -312,11 +318,11 @@
                                 </svg>
                                 <span className="ml-2">Volver</span>
                             </button>
-                           
+                          
                             <h1 className="text-xl font-bold text-indigo-700 mb-1">Empresa: {empresa.nombre}</h1>
                             <p className="text-gray-600 text-sm">Ingresa tu ID de promotor y contraseña</p>
                         </div>
-                       
+                      
                         <form onSubmit={handleLogin} className="flex flex-col gap-4">
                             <div>
                                 <label className="block text-gray-700 text-sm font-semibold mb-1">
@@ -331,7 +337,7 @@
                                     required
                                 />
                             </div>
-                           
+                          
                             <div>
                                 <label className="block text-gray_700 text-sm font-semibold mb-1">
                                     Contraseña
@@ -345,7 +351,7 @@
                                     required
                                 />
                             </div>
-                           
+                          
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -354,13 +360,13 @@
                                 {loading ? 'Verificando...' : 'Iniciar Sesión'}
                             </button>
                         </form>
-                       
+                      
                         {error && (
                             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mt-4 rounded-lg text-sm">
                                 {error}
                             </div>
                         )}
-                       
+                      
                         <div className="mt-6 text-center text-gray-500 text-xs">
                             Contacta al administrador si no tienes credenciales
                         </div>
@@ -381,7 +387,7 @@
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const startDate = today.toISOString();
-                       
+                      
                         const { data, error } = await supabase
                             .from('web_precios')
                             .select('promoter_name')
@@ -447,7 +453,7 @@
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const startDate = today.toISOString();
-                       
+                      
                         const { data, error } = await supabase
                             .from('web_precios')
                             .select('promoter_name')
@@ -461,7 +467,7 @@
                         const sortedNames = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
                         const userIndex = sortedNames.indexOf(promoterName);
                         const userRank = userIndex !== -1 ? userIndex + 1 : null;
-                       
+                      
                         setRank(userRank);
                         setTotal(sortedNames.length);
                     } catch (e) {
@@ -518,7 +524,7 @@
                         <option value="">-- Presentación --</option>
                         {presentations.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
-                   
+                  
                     <input
                         type="number"
                         placeholder="Precio por Unidad"
@@ -528,7 +534,7 @@
                         className={`w-full sm:w-1/4 p-3 border rounded-xl input-focus ${errors[item.id] ? 'border-red-500' : 'border-gray-300'} ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
                         required={!disableFields}
                     />
-                   
+                  
                     <select
                         value={item.currency}
                         onChange={(e) => onChange(e, type, item.id, 'currency')}
@@ -539,7 +545,7 @@
                         <option value="">-- Moneda --</option>
                         {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                   
+                  
                     {type === 'myitems' && (
                         <>
                             <div className="flex flex-col sm:w-1/6">
@@ -578,7 +584,7 @@
                             </div>
                         </>
                     )}
-                   
+                  
                     {canRemove && (
                         <button
                             type="button"
@@ -589,7 +595,7 @@
                             <Minus size={24} />
                         </button>
                     )}
-                   
+                  
                     {errors[item.id] && (
                         <div className="error-text col-span-full">{errors[item.id]}</div>
                     )}
@@ -615,7 +621,7 @@
                         .eq('empresa_id', empresaId)
                         .ilike('trade_name', `%${term}%`)
                         .limit(20);
-                   
+                  
                     if (error) throw error;
                     setClientes(data || []);
                 } catch (e) {
@@ -643,7 +649,7 @@
                 debounceTimer.current = setTimeout(() => {
                     buscarClientes(searchTerm);
                 }, 300);
-               
+              
                 return () => {
                     if (debounceTimer.current) {
                         clearTimeout(debounceTimer.current);
@@ -681,7 +687,7 @@
                         className="w-full p-3 border border-gray-300 rounded-xl input-focus"
                         required
                     />
-                   
+                  
                     {isOpen && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg dropdown-menu">
                             {loading ? (
@@ -715,6 +721,82 @@
             );
         };
         // ============================================
+        // COMPONENTE PARA CAPTURA DE FOTOS
+        // ============================================
+        const PhotoCapture = ({ onPhotoTaken, label, photos }) => {
+            const videoRef = useRef(null);
+            const canvasRef = useRef(null);
+            const [stream, setStream] = useState(null);
+            const [isCameraOpen, setIsCameraOpen] = useState(false);
+
+            const startCamera = async () => {
+                try {
+                    const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    setStream(mediaStream);
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = mediaStream;
+                    }
+                    setIsCameraOpen(true);
+                } catch (err) {
+                    console.error('Error al acceder a la cámara:', err);
+                }
+            };
+
+            const takePhoto = () => {
+                if (canvasRef.current && videoRef.current) {
+                    const context = canvasRef.current.getContext('2d');
+                    context.drawImage(videoRef.current, 0, 0, 640, 480);
+                    const dataUrl = canvasRef.current.toDataURL('image/jpeg');
+                    onPhotoTaken(dataUrl);
+                }
+            };
+
+            const stopCamera = () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                setIsCameraOpen(false);
+            };
+
+            useEffect(() => {
+                return () => {
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                };
+            }, [stream]);
+
+            return (
+                <div className="mb-4">
+                    <h3 className="text-gray-700 font-bold text-sm mb-2">{label}</h3>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                        {photos.map((photo, index) => (
+                            <img key={index} src={photo} alt={`Foto ${index + 1}`} className="w-20 h-20 object-cover rounded" />
+                        ))}
+                    </div>
+                    {isCameraOpen ? (
+                        <div className="relative">
+                            <video ref={videoRef} autoPlay playsInline className="w-full rounded-lg" />
+                            <div className="flex justify-center gap-4 mt-2">
+                                <button type="button" onClick={takePhoto} className="btn-primary text-white py-2 px-4 rounded">
+                                    Capturar
+                                </button>
+                                <button type="button" onClick={stopCamera} className="bg-red-500 text-white py-2 px-4 rounded">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button type="button" onClick={startCamera} className="w-full bg-indigo-100 text-indigo-600 py-3 rounded-xl flex items-center justify-center gap-2">
+                            <Camera size={24} />
+                            Tomar Foto
+                        </button>
+                    )}
+                    <canvas ref={canvasRef} width="640" height="480" className="hidden" />
+                </div>
+            );
+        };
+        // ============================================
         // PANTALLA 3: CAPTURA DE DATOS
         // ============================================
         const DataEntryScreen = ({ empresa, promoterName, promoterId, initialState, initialZone, newItem, setNewItem, error, setError, successMessage, setSuccessMessage, loading, setLoading, onLogout }) => {
@@ -731,6 +813,10 @@
             const [outOfStockItems, setOutOfStockItems] = useState(new Set());
             const [isMayorista, setIsMayorista] = useState(false);
             const [isClienteCerrado, setIsClienteCerrado] = useState(false);
+            const [visitStarted, setVisitStarted] = useState(false);
+            const [beforePhotos, setBeforePhotos] = useState([]);
+            const [afterPhotos, setAfterPhotos] = useState([]);
+            const [sessionData, setSessionData] = useState(null);
             // Cargar datos (estados y zonas globales)
             useEffect(() => {
                 const fetchData = async () => {
@@ -741,19 +827,19 @@
                             .select('presentation')
                             .eq('empresa_id', empresa.id)
                             .order('presentation');
-                       
+                      
                         const { data: myData } = await supabase
                             .from('web_myproductos')
                             .select('presentation')
                             .eq('empresa_id', empresa.id)
                             .order('presentation');
-                       
+                      
                         // Estados y zonas GLOBALES (sin filtro por empresa_id)
                         const { data: estadosData } = await supabase
                             .from('web_estados')
                             .select('id, nombre')
                             .order('nombre');
-                       
+                      
                         const { data: zonasData } = await supabase
                             .from('web_zonas')
                             .select('id, nombre, estado_id')
@@ -762,7 +848,7 @@
                         setPresentationsMy(myData?.map(p => p.presentation) || []);
                         setEstados(estadosData || []);
                         setZonas(zonasData || []);
-                       
+                      
                         if (initialState) setNewItem(prev => ({ ...prev, state: initialState }));
                         if (initialZone) setNewItem(prev => ({ ...prev, zone: initialZone }));
                     } catch (e) {
@@ -782,7 +868,7 @@
                             .filter(z => z.estado_id === estado.id)
                             .map(z => z.nombre.replace('Zona ', ''));
                         setFilteredZonas(filtered);
-                       
+                      
                         if (newItem.zone && !filtered.includes(newItem.zone)) {
                             setNewItem(prev => ({ ...prev, zone: '' }));
                         }
@@ -793,6 +879,36 @@
                     setFilteredZonas([]);
                 }
             }, [newItem.state, estados, zonas]);
+            // Cargar sesión desde cache (IndexedDB)
+            useEffect(() => {
+                const loadSession = async () => {
+                    const db = await openDB();
+                    const tx = db.transaction('pendientes', 'readonly');
+                    const store = tx.objectStore('pendientes');
+                    const request = store.getAll();
+                    request.onsuccess = () => {
+                        const pending = request.result;
+                        const ongoingVisit = pending.find(item => item.promoter_id === promoterId && !item.completed);
+                        if (ongoingVisit) {
+                            setSessionData(ongoingVisit);
+                            setNewItem(ongoingVisit.newItem || {
+                                state: initialState || '',
+                                zone: '',
+                                trade: '',
+                                competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
+                                myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                            });
+                            setBeforePhotos(ongoingVisit.beforePhotos || []);
+                            setAfterPhotos(ongoingVisit.afterPhotos || []);
+                            setComments(ongoingVisit.comments || '');
+                            setIsMayorista(ongoingVisit.isMayorista || false);
+                            setIsClienteCerrado(ongoingVisit.isClienteCerrado || false);
+                            setVisitStarted(true);
+                        }
+                    };
+                };
+                loadSession();
+            }, [promoterId]);
             const handleInputChange = (e, type, id, field) => {
                 const { value } = e.target;
                 setNewItem(prev => {
@@ -903,6 +1019,25 @@
                 }
                 return !hasError;
             };
+            const handleStartVisit = async () => {
+                if (beforePhotos.length === 0) {
+                    setError('Debes tomar al menos una foto "antes" para iniciar la visita.');
+                    return;
+                }
+                setVisitStarted(true);
+                // Guardar en cache
+                const session = {
+                    promoter_id: promoterId,
+                    newItem,
+                    beforePhotos,
+                    comments,
+                    isMayorista,
+                    isClienteCerrado,
+                    completed: false
+                };
+                const db = await openDB();
+                await db.add('pendientes', session);
+            };
             const handleSaveData = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -918,9 +1053,14 @@
                         return;
                     }
                 }
+                if (afterPhotos.length === 0) {
+                    setError('Debes tomar al menos una foto "después" para finalizar la visita.');
+                    setLoading(false);
+                    return;
+                }
                 let latitude = null;
                 let longitude = null;
-               
+              
                 if (!navigator.geolocation) {
                     setGeoError("Tu dispositivo no soporta geolocalización.");
                 }
@@ -956,7 +1096,7 @@
                             errMsg.push("Comercio (debes seleccionar un comercio válido de la lista)");
                         }
                     }
-                   
+                  
                     if (errMsg.length > 0) {
                         setError(`Completa: ${errMsg.join(", ")}.`);
                         setLoading(false);
@@ -964,7 +1104,7 @@
                     }
                     let validCompetitorItems = [];
                     let validMyItems = [];
-                   
+                  
                     if (!isClienteCerrado) {
                         validCompetitorItems = newItem.competitoritems.filter(item =>
                             item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
@@ -972,7 +1112,7 @@
                         validMyItems = newItem.myitems.filter(item =>
                             item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
                         );
-                       
+                      
                         if (validCompetitorItems.length === 0 && validMyItems.length === 0) {
                             setError("Agrega al menos un ítem completo.");
                             setLoading(false);
@@ -1008,11 +1148,33 @@
                         comments: comments.trim() || null,
                         p_mayorista: isMayorista ? 'Si' : 'No',
                         cliente_cerrado: isClienteCerrado ? 'Si' : 'No',
+                        before_photos: beforePhotos, // Guardar URLs o data URLs
+                        after_photos: afterPhotos
                     };
                     if (navigator.onLine) {
+                        // Subir fotos a Supabase Storage
+                        const uploadedBefore = [];
+                        for (const photo of beforePhotos) {
+                            const { data, error } = await supabase.storage
+                                .from('visits_photos')
+                                .upload(`before/${crypto.randomUUID()}.jpg`, dataURLtoFile(photo, 'before.jpg'));
+                            if (error) throw error;
+                            uploadedBefore.push(data.path);
+                        }
+                        const uploadedAfter = [];
+                        for (const photo of afterPhotos) {
+                            const { data, error } = await supabase.storage
+                                .from('visits_photos')
+                                .upload(`after/${crypto.randomUUID()}.jpg`, dataURLtoFile(photo, 'after.jpg'));
+                            if (error) throw error;
+                            uploadedAfter.push(data.path);
+                        }
+                        visitData.before_photos = uploadedBefore;
+                        visitData.after_photos = uploadedAfter;
+
                         const { error } = await supabase.from('web_precios').insert([visitData]);
                         if (error) throw error;
-                       
+                      
                         setComments('');
                         setIsMayorista(false);
                         setIsClienteCerrado(false);
@@ -1024,12 +1186,20 @@
                             myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
                         });
                         setOutOfStockItems(new Set());
-                        setSuccessMessage("✅ Datos, ubicación y comentarios guardados con éxito.");
+                        setBeforePhotos([]);
+                        setAfterPhotos([]);
+                        setVisitStarted(false);
+                        setSuccessMessage("✅ Datos, ubicación, comentarios y fotos guardados con éxito.");
+                        // Limpiar cache
+                        const db = await openDB();
+                        const tx = db.transaction('pendientes', 'readwrite');
+                        const store = tx.objectStore('pendientes');
+                        await store.clear();
                     } else {
                         const db = await openDB();
                         await db.add('pendientes', visitData);
                         setSuccessMessage("✅ Guardado offline. Se sincronizará al conectar.");
-                       
+                      
                         setComments('');
                         setIsMayorista(false);
                         setIsClienteCerrado(false);
@@ -1041,6 +1211,9 @@
                             myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
                         });
                         setOutOfStockItems(new Set());
+                        setBeforePhotos([]);
+                        setAfterPhotos([]);
+                        setVisitStarted(false);
                     }
                 } catch (e) {
                     console.error("Error al guardar:", e);
@@ -1048,6 +1221,15 @@
                 } finally {
                     setLoading(false);
                 }
+            };
+            // Función auxiliar para convertir dataURL a File
+            const dataURLtoFile = (dataurl, filename) => {
+                let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                    bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                return new File([u8arr], filename, { type: mime });
             };
             return (
                 <div className="min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-2 sm:p-4 flex flex-col items-center">
@@ -1071,7 +1253,7 @@
                         </div>
                         {/* Top 5 del día */}
                         <TopSellers empresaId={empresa.id} />
-                       
+                      
                         {/* Posición del usuario */}
                         <UserRank promoterName={promoterName} empresaId={empresa.id} />
                         {priceWarning && (
@@ -1079,27 +1261,27 @@
                                 {priceWarning}
                             </div>
                         )}
-                       
+                      
                         {error && (
                             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-lg text-sm">
                                 {error}
                             </div>
                         )}
-                       
+                      
                         {successMessage && (
                             <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-3 mb-4 rounded-lg text-sm">
                                 {successMessage}
                             </div>
                         )}
-                       
+                      
                         {geoError && (
                             <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 mb-4 rounded-lg text-sm">
                                 {geoError}
                             </div>
                         )}
-                       
+                      
                         {dataLoading && <div className="text-center text-gray-600 text-sm">Cargando datos...</div>}
-                       
+                      
                         <form onSubmit={handleSaveData} className="flex flex-col gap-4">
                             <div className="flex flex-col gap-2">
                                 <label className="block">
@@ -1115,7 +1297,7 @@
                                         {estados.map(e => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
                                     </select>
                                 </label>
-                               
+                              
                                 <label className="block">
                                     <span className="text-gray_700 font-semibold text-sm">Zona</span>
                                     <select
@@ -1128,7 +1310,7 @@
                                         {filteredZonas.map(z => <option key={z} value={z}>{z}</option>)}
                                     </select>
                                 </label>
-                               
+                              
                                 <label className="block">
                                     <span className="text-gray-700 font-semibold text-sm">Comercio</span>
                                     <ClienteAutocomplete
@@ -1138,7 +1320,7 @@
                                     />
                                 </label>
                             </div>
-                           
+                          
                             <div className="flex items-center">
                                 <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                     <input
@@ -1150,7 +1332,7 @@
                                     Precios Mayoristas
                                 </label>
                             </div>
-                           
+                          
                             <div className="flex items-center">
                                 <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                     <input
@@ -1162,68 +1344,92 @@
                                     Cliente Cerrado
                                 </label>
                             </div>
-                           
+                          
                             {!isClienteCerrado && (
                                 <>
-                                    <div>
-                                        <span className="text-gray-700 font-bold text-sm">Precios Competencia por Unidad</span>
-                                        {newItem.competitoritems.map(item => (
-                                            <ItemRow
-                                                key={item.id}
-                                                item={item}
-                                                type="competitoritems"
-                                                onChange={handleInputChange}
-                                                onRemove={handleRemoveClick}
-                                                presentations={presentationsCompetidor}
-                                                currencies={['BS', '$', 'Pesos']}
-                                                canRemove={newItem.competitoritems.length > 1}
-                                                errors={priceErrors}
-                                                setErrors={setPriceErrors}
+                                    {!visitStarted ? (
+                                        <div>
+                                            <PhotoCapture 
+                                                label="Fotos Antes" 
+                                                onPhotoTaken={(photo) => setBeforePhotos(prev => [...prev, photo])} 
+                                                photos={beforePhotos} 
                                             />
-                                        ))}
-                                        <div className="flex justify-end mt-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleAddClick('competitoritems')}
-                                                className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200"
+                                            <button 
+                                                type="button" 
+                                                onClick={handleStartVisit} 
+                                                className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 mt-4"
                                             >
-                                                <Plus size={24} />
+                                                Iniciar Visita
                                             </button>
                                         </div>
-                                    </div>
-                                   
-                                    <div>
-                                        <span className="text-gray-700 font-bold text-sm">Nuestros Precios por Unidad</span>
-                                        {newItem.myitems.map(item => (
-                                            <ItemRow
-                                                key={item.id}
-                                                item={item}
-                                                type="myitems"
-                                                onChange={handleInputChange}
-                                                onRemove={handleRemoveClick}
-                                                presentations={presentationsMy}
-                                                currencies={['BS', '$', 'Pesos']}
-                                                canRemove={newItem.myitems.length > 1}
-                                                errors={priceErrors}
-                                                setErrors={setPriceErrors}
-                                                isMyItem={true}
-                                                onToggleOutOfStock={toggleOutOfStock}
-                                                isOutOfStock={outOfStockItems.has(item.id)}
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <span className="text-gray-700 font-bold text-sm">Precios Competencia por Unidad</span>
+                                                {newItem.competitoritems.map(item => (
+                                                    <ItemRow
+                                                        key={item.id}
+                                                        item={item}
+                                                        type="competitoritems"
+                                                        onChange={handleInputChange}
+                                                        onRemove={handleRemoveClick}
+                                                        presentations={presentationsCompetidor}
+                                                        currencies={['BS', '$', 'Pesos']}
+                                                        canRemove={newItem.competitoritems.length > 1}
+                                                        errors={priceErrors}
+                                                        setErrors={setPriceErrors}
+                                                    />
+                                                ))}
+                                                <div className="flex justify-end mt-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAddClick('competitoritems')}
+                                                        className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200"
+                                                    >
+                                                        <Plus size={24} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                          
+                                            <div>
+                                                <span className="text-gray-700 font-bold text-sm">Nuestros Precios por Unidad</span>
+                                                {newItem.myitems.map(item => (
+                                                    <ItemRow
+                                                        key={item.id}
+                                                        item={item}
+                                                        type="myitems"
+                                                        onChange={handleInputChange}
+                                                        onRemove={handleRemoveClick}
+                                                        presentations={presentationsMy}
+                                                        currencies={['BS', '$', 'Pesos']}
+                                                        canRemove={newItem.myitems.length > 1}
+                                                        errors={priceErrors}
+                                                        setErrors={setPriceErrors}
+                                                        isMyItem={true}
+                                                        onToggleOutOfStock={toggleOutOfStock}
+                                                        isOutOfStock={outOfStockItems.has(item.id)}
+                                                    />
+                                                ))}
+                                                <div className="flex justify-end mt-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAddClick('myitems')}
+                                                        className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200"
+                                                    >
+                                                        <Plus size={24} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <PhotoCapture 
+                                                label="Fotos Después" 
+                                                onPhotoTaken={(photo) => setAfterPhotos(prev => [...prev, photo])} 
+                                                photos={afterPhotos} 
                                             />
-                                        ))}
-                                        <div className="flex justify-end mt-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleAddClick('myitems')}
-                                                className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200"
-                                            >
-                                                <Plus size={24} />
-                                            </button>
-                                        </div>
-                                    </div>
+                                        </>
+                                    )}
                                 </>
                             )}
-                           
+                          
                             <div className="flex flex-col">
                                 <label className="text-gray-700 font-semibold text-sm mb-1">
                                     Comentarios {isClienteCerrado ? '(requerido)' : '(opcional)'}
@@ -1236,10 +1442,10 @@
                                     required={isClienteCerrado}
                                 />
                             </div>
-                           
+                          
                             <button
                                 type="submit"
-                                disabled={loading || dataLoading}
+                                disabled={loading || dataLoading || !visitStarted}
                                 className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
                             >
                                 <Save size={24} />
