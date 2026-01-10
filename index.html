@@ -721,78 +721,35 @@
             );
         };
         // ============================================
-        // COMPONENTE PARA CAPTURA DE FOTOS
+        // COMPONENTE PARA CAPTURA DE FOTOS (USANDO CÁMARA NATIVA)
         // ============================================
         const PhotoCapture = ({ onPhotoTaken, label, photos }) => {
-            const videoRef = useRef(null);
-            const canvasRef = useRef(null);
-            const [stream, setStream] = useState(null);
-            const [isCameraOpen, setIsCameraOpen] = useState(false);
-
-            const startCamera = async () => {
-                try {
-                    const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                    setStream(mediaStream);
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = mediaStream;
-                    }
-                    setIsCameraOpen(true);
-                } catch (err) {
-                    console.error('Error al acceder a la cámara:', err);
-                }
+            const handleFileChange = (e) => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        onPhotoTaken(ev.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                });
             };
-
-            const takePhoto = () => {
-                if (canvasRef.current && videoRef.current) {
-                    const context = canvasRef.current.getContext('2d');
-                    context.drawImage(videoRef.current, 0, 0, 640, 480);
-                    const dataUrl = canvasRef.current.toDataURL('image/jpeg');
-                    onPhotoTaken(dataUrl);
-                }
-            };
-
-            const stopCamera = () => {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-                setIsCameraOpen(false);
-            };
-
-            useEffect(() => {
-                return () => {
-                    if (stream) {
-                        stream.getTracks().forEach(track => track.stop());
-                    }
-                };
-            }, [stream]);
-
             return (
                 <div className="mb-4">
                     <h3 className="text-gray-700 font-bold text-sm mb-2">{label}</h3>
-                    <div className="flex flex-wrap gap-2 mb-2">
+                    <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment" 
+                        multiple 
+                        onChange={handleFileChange} 
+                        className="w-full p-3 border border-gray-300 rounded-xl input-focus"
+                    />
+                    <div className="flex flex-wrap gap-2 mt-2">
                         {photos.map((photo, index) => (
                             <img key={index} src={photo} alt={`Foto ${index + 1}`} className="w-20 h-20 object-cover rounded" />
                         ))}
                     </div>
-                    {isCameraOpen ? (
-                        <div className="relative">
-                            <video ref={videoRef} autoPlay playsInline className="w-full rounded-lg" />
-                            <div className="flex justify-center gap-4 mt-2">
-                                <button type="button" onClick={takePhoto} className="btn-primary text-white py-2 px-4 rounded">
-                                    Capturar
-                                </button>
-                                <button type="button" onClick={stopCamera} className="bg-red-500 text-white py-2 px-4 rounded">
-                                    Cancelar
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <button type="button" onClick={startCamera} className="w-full bg-indigo-100 text-indigo-600 py-3 rounded-xl flex items-center justify-center gap-2">
-                            <Camera size={24} />
-                            Tomar Foto
-                        </button>
-                    )}
-                    <canvas ref={canvasRef} width="640" height="480" className="hidden" />
                 </div>
             );
         };
@@ -885,30 +842,84 @@
                     const db = await openDB();
                     const tx = db.transaction('pendientes', 'readonly');
                     const store = tx.objectStore('pendientes');
-                    const request = store.getAll();
-                    request.onsuccess = () => {
-                        const pending = request.result;
-                        const ongoingVisit = pending.find(item => item.promoter_id === promoterId && !item.completed);
-                        if (ongoingVisit) {
-                            setSessionData(ongoingVisit);
-                            setNewItem(ongoingVisit.newItem || {
-                                state: initialState || '',
-                                zone: '',
-                                trade: '',
-                                competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                                myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
-                            });
-                            setBeforePhotos(ongoingVisit.beforePhotos || []);
-                            setAfterPhotos(ongoingVisit.afterPhotos || []);
-                            setComments(ongoingVisit.comments || '');
-                            setIsMayorista(ongoingVisit.isMayorista || false);
-                            setIsClienteCerrado(ongoingVisit.isClienteCerrado || false);
-                            setVisitStarted(true);
-                        }
-                    };
+                    const pending = await new Promise((resolve) => {
+                        const req = store.getAll();
+                        req.onsuccess = () => resolve(req.result);
+                    });
+                    const ongoingVisit = pending.find(item => item.promoter_id === promoterId && !item.completed);
+                    if (ongoingVisit) {
+                        setSessionData(ongoingVisit);
+                        setNewItem(ongoingVisit.newItem || {
+                            state: initialState || '',
+                            zone: '',
+                            trade: '',
+                            competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
+                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '' }],
+                        });
+                        setBeforePhotos(ongoingVisit.before_photos || []);
+                        setAfterPhotos(ongoingVisit.after_photos || []);
+                        setComments(ongoingVisit.comments || '');
+                        setIsMayorista(ongoingVisit.isMayorista || false);
+                        setIsClienteCerrado(ongoingVisit.isClienteCerrado || false);
+                        setVisitStarted(true);
+                    }
                 };
                 loadSession();
             }, [promoterId]);
+            // Sincronización offline-online
+            useEffect(() => {
+                const syncPending = async () => {
+                    if (!navigator.onLine) return;
+                    const db = await openDB();
+                    const tx = db.transaction('pendientes', 'readwrite');
+                    const store = tx.objectStore('pendientes');
+                    const pending = await new Promise((resolve) => {
+                        const req = store.getAll();
+                        req.onsuccess = () => resolve(req.result);
+                    });
+                    for (let item of pending) {
+                        try {
+                            // Subir fotos before (de dataURL a Storage)
+                            const uploadedBefore = [];
+                            for (const photo of item.before_photos || []) {
+                                const file = dataURLtoFile(photo, `before_${crypto.randomUUID()}.jpg`);
+                                const { data, error } = await supabase.storage
+                                    .from('visits_photos')
+                                    .upload(`before/${file.name}`, file);
+                                if (error) throw error;
+                                uploadedBefore.push(data.path);
+                            }
+                            // Subir fotos after
+                            const uploadedAfter = [];
+                            for (const photo of item.after_photos || []) {
+                                const file = dataURLtoFile(photo, `after_${crypto.randomUUID()}.jpg`);
+                                const { data, error } = await supabase.storage
+                                    .from('visits_photos')
+                                    .upload(`after/${file.name}`, file);
+                                if (error) throw error;
+                                uploadedAfter.push(data.path);
+                            }
+                            // Reemplazar en item
+                            item.before_photos = uploadedBefore;
+                            item.after_photos = uploadedAfter;
+                            // Insertar en Supabase
+                            const { error: insertError } = await supabase.from('web_precios').insert([item]);
+                            if (insertError) throw insertError;
+                            // Eliminar de pending
+                            await new Promise((resolve) => {
+                                const delReq = store.delete(item.id);  // Asume que guardas con key
+                                delReq.onsuccess = resolve;
+                            });
+                            setSuccessMessage('✅ Visitas pendientes sincronizadas.');
+                        } catch (e) {
+                            console.error('Error en sync:', e);
+                        }
+                    }
+                };
+                window.addEventListener('online', syncPending);
+                syncPending();  // Intentar sync al cargar
+                return () => window.removeEventListener('online', syncPending);
+            }, []);
             const handleInputChange = (e, type, id, field) => {
                 const { value } = e.target;
                 setNewItem(prev => {
@@ -1027,16 +1038,26 @@
                 setVisitStarted(true);
                 // Guardar en cache
                 const session = {
+                    id: crypto.randomUUID(),
+                    empresa_id: empresa.id,
                     promoter_id: promoterId,
+                    promoter_name: promoterName,
                     newItem,
-                    beforePhotos,
+                    before_photos: beforePhotos,
+                    after_photos: afterPhotos,
                     comments,
                     isMayorista,
                     isClienteCerrado,
                     completed: false
                 };
                 const db = await openDB();
-                await db.add('pendientes', session);
+                const tx = db.transaction('pendientes', 'readwrite');
+                const store = tx.objectStore('pendientes');
+                await new Promise((resolve, reject) => {
+                    const req = store.add(session);
+                    req.onsuccess = resolve;
+                    req.onerror = reject;
+                });
             };
             const handleSaveData = async (e) => {
                 e.preventDefault();
@@ -1148,30 +1169,31 @@
                         comments: comments.trim() || null,
                         p_mayorista: isMayorista ? 'Si' : 'No',
                         cliente_cerrado: isClienteCerrado ? 'Si' : 'No',
-                        before_photos: beforePhotos, // Guardar URLs o data URLs
+                        before_photos: beforePhotos,  // Temporal: dataURLs o paths
                         after_photos: afterPhotos
                     };
                     if (navigator.onLine) {
                         // Subir fotos a Supabase Storage
                         const uploadedBefore = [];
                         for (const photo of beforePhotos) {
+                            const file = dataURLtoFile(photo, `before_${crypto.randomUUID()}.jpg`);
                             const { data, error } = await supabase.storage
                                 .from('visits_photos')
-                                .upload(`before/${crypto.randomUUID()}.jpg`, dataURLtoFile(photo, 'before.jpg'));
+                                .upload(`before/${file.name}`, file);
                             if (error) throw error;
                             uploadedBefore.push(data.path);
                         }
                         const uploadedAfter = [];
                         for (const photo of afterPhotos) {
+                            const file = dataURLtoFile(photo, `after_${crypto.randomUUID()}.jpg`);
                             const { data, error } = await supabase.storage
                                 .from('visits_photos')
-                                .upload(`after/${crypto.randomUUID()}.jpg`, dataURLtoFile(photo, 'after.jpg'));
+                                .upload(`after/${file.name}`, file);
                             if (error) throw error;
                             uploadedAfter.push(data.path);
                         }
                         visitData.before_photos = uploadedBefore;
                         visitData.after_photos = uploadedAfter;
-
                         const { error } = await supabase.from('web_precios').insert([visitData]);
                         if (error) throw error;
                       
@@ -1194,10 +1216,21 @@
                         const db = await openDB();
                         const tx = db.transaction('pendientes', 'readwrite');
                         const store = tx.objectStore('pendientes');
-                        await store.clear();
+                        await new Promise((resolve) => {
+                            const req = store.clear();
+                            req.onsuccess = resolve;
+                        });
                     } else {
+                        // Guardar offline con dataURLs
+                        visitData.id = crypto.randomUUID();
                         const db = await openDB();
-                        await db.add('pendientes', visitData);
+                        const tx = db.transaction('pendientes', 'readwrite');
+                        const store = tx.objectStore('pendientes');
+                        await new Promise((resolve, reject) => {
+                            const req = store.add(visitData);
+                            req.onsuccess = resolve;
+                            req.onerror = reject;
+                        });
                         setSuccessMessage("✅ Guardado offline. Se sincronizará al conectar.");
                       
                         setComments('');
@@ -1561,7 +1594,7 @@
                 request.onupgradeneeded = e => {
                     const db = e.target.result;
                     if (!db.objectStoreNames.contains('pendientes')) {
-                        db.createObjectStore('pendientes', { autoIncrement: true });
+                        db.createObjectStore('pendientes', { keyPath: 'id' });  // Usar id como key
                     }
                 };
                 request.onsuccess = e => resolve(e.target.result);
