@@ -755,12 +755,9 @@
             const [outOfStockItems, setOutOfStockItems] = useState(new Set());
             const [isMayorista, setIsMayorista] = useState(false);
             const [isClienteCerrado, setIsClienteCerrado] = useState(false);
-            const [visitStarted, setVisitStarted] = useState(false);
             const [beforePhotos, setBeforePhotos] = useState([]);
             const [afterPhotos, setAfterPhotos] = useState([]);
             const [sessionData, setSessionData] = useState(null);
-
-            // ── NUEVO ── Estado para el modal del planograma
             const [showPlanogramModal, setShowPlanogramModal] = useState(false);
 
             useEffect(() => {
@@ -844,7 +841,6 @@
                         setComments(ongoingVisit.comments || '');
                         setIsMayorista(ongoingVisit.isMayorista || false);
                         setIsClienteCerrado(ongoingVisit.isClienteCerrado || false);
-                        setVisitStarted(true);
                     }
                 };
                 loadSession();
@@ -1027,35 +1023,6 @@
                 return !hasError;
             };
 
-            const handleStartVisit = async () => {
-                if (beforePhotos.length === 0) {
-                    setError('Debes tomar al menos una foto "antes" para iniciar la visita.');
-                    return;
-                }
-                setVisitStarted(true);
-                const session = {
-                    id: crypto.randomUUID(),
-                    empresa_id: empresa.id,
-                    promoter_id: promoterId,
-                    promoter_name: promoterName,
-                    newItem,
-                    before_photos: beforePhotos,
-                    after_photos: afterPhotos,
-                    comments,
-                    isMayorista,
-                    isClienteCerrado,
-                    completed: false
-                };
-                const db = await openDB();
-                const tx = db.transaction('pendientes', 'readwrite');
-                const store = tx.objectStore('pendientes');
-                await new Promise((resolve, reject) => {
-                    const req = store.add(session);
-                    req.onsuccess = resolve;
-                    req.onerror = reject;
-                });
-            };
-
             const handleSaveData = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -1230,7 +1197,6 @@
                 setOutOfStockItems(new Set());
                 setBeforePhotos([]);
                 setAfterPhotos([]);
-                setVisitStarted(false);
                 if (navigator.onLine) {
                     (async () => {
                         const db = await openDB();
@@ -1241,9 +1207,10 @@
                 }
             };
 
+            const hasBeforePhotos = beforePhotos.length > 0;
+
             return (
                 <div className="min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-2 sm:p-4 flex flex-col items-center relative">
-
                     <div className="container w-full max-w-md bg-white card p-4 sm:p-6">
                         <div className="mb-4">
                             <div className="flex justify-between items-center mb-2">
@@ -1326,48 +1293,39 @@
                                 </label>
                             </div>
 
-                            <div className="flex items-center">
-                                <label className="flex items-center text-sm text-gray-700 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={isMayorista}
-                                        onChange={(e) => setIsMayorista(e.target.checked)}
-                                        className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                    />
-                                    Precios Mayoristas
-                                </label>
-                            </div>
+                            <PhotoCapture
+                                label="Fotos Antes"
+                                onPhotoTaken={(photo) => setBeforePhotos(prev => [...prev, photo])}
+                                photos={beforePhotos}
+                            />
 
-                            <div className="flex items-center">
-                                <label className="flex items-center text-sm text-gray-700 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={isClienteCerrado}
-                                        onChange={(e) => setIsClienteCerrado(e.target.checked)}
-                                        className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                    />
-                                    Cliente Cerrado
-                                </label>
-                            </div>
-
-                            {!isClienteCerrado && (
+                            {hasBeforePhotos && (
                                 <>
-                                    {!visitStarted ? (
-                                        <div>
-                                            <PhotoCapture
-                                                label="Fotos Antes"
-                                                onPhotoTaken={(photo) => setBeforePhotos(prev => [...prev, photo])}
-                                                photos={beforePhotos}
+                                    <div className="flex items-center">
+                                        <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isMayorista}
+                                                onChange={(e) => setIsMayorista(e.target.checked)}
+                                                className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                             />
-                                            <button
-                                                type="button"
-                                                onClick={handleStartVisit}
-                                                className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 mt-4"
-                                            >
-                                                Iniciar Visita
-                                            </button>
-                                        </div>
-                                    ) : (
+                                            Precios Mayoristas
+                                        </label>
+                                    </div>
+
+                                    <div className="flex items-center">
+                                        <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isClienteCerrado}
+                                                onChange={(e) => setIsClienteCerrado(e.target.checked)}
+                                                className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                            />
+                                            Cliente Cerrado
+                                        </label>
+                                    </div>
+
+                                    {!isClienteCerrado && (
                                         <>
                                             <div>
                                                 <span className="text-gray-700 font-bold text-sm">Precios Competencia por Unidad</span>
@@ -1425,45 +1383,44 @@
                                                     </button>
                                                 </div>
                                             </div>
-
-                                            <PhotoCapture
-                                                label="Fotos Después"
-                                                onPhotoTaken={(photo) => setAfterPhotos(prev => [...prev, photo])}
-                                                photos={afterPhotos}
-                                            />
                                         </>
                                     )}
+
+                                    <PhotoCapture
+                                        label="Fotos Después"
+                                        onPhotoTaken={(photo) => setAfterPhotos(prev => [...prev, photo])}
+                                        photos={afterPhotos}
+                                    />
+
+                                    <div className="flex flex-col">
+                                        <label className="text-gray-700 font-semibold text-sm mb-1">
+                                            Comentarios {isClienteCerrado ? '(requerido)' : '(opcional)'}
+                                        </label>
+                                        <textarea
+                                            value={comments}
+                                            onChange={(e) => setComments(e.target.value)}
+                                            placeholder="Describe alguna situación (ej: producto agotado, competidor SIN STOCK, etc.)"
+                                            className="w-full p-3 border border-gray-300 rounded-xl input-focus h-20 resize-none"
+                                            required={isClienteCerrado}
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={loading || dataLoading}
+                                        className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
+                                    >
+                                        <Save size={24} />
+                                        {loading ? 'Guardando...' : 'Guardar Datos'}
+                                    </button>
                                 </>
                             )}
-
-                            <div className="flex flex-col">
-                                <label className="text-gray-700 font-semibold text-sm mb-1">
-                                    Comentarios {isClienteCerrado ? '(requerido)' : '(opcional)'}
-                                </label>
-                                <textarea
-                                    value={comments}
-                                    onChange={(e) => setComments(e.target.value)}
-                                    placeholder="Describe alguna situación (ej: producto agotado, competidor SIN STOCK, etc.)"
-                                    className="w-full p-3 border border-gray-300 rounded-xl input-focus h-20 resize-none"
-                                    required={isClienteCerrado}
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={loading || dataLoading || !visitStarted}
-                                className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
-                            >
-                                <Save size={24} />
-                                {loading ? 'Guardando...' : 'Guardar Datos'}
-                            </button>
                         </form>
                     </div>
 
-                    {/* ── NUEVO ── Botón flotante y Modal del Planograma ── */}
+                    {/* Botón flotante y Modal del Planograma */}
                     {empresa?.planogramImage && (
                         <>
-                            {/* Botón flotante */}
                             <button
                                 onClick={() => setShowPlanogramModal(true)}
                                 className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-xl flex items-center justify-center hover:bg-indigo-700 transition transform active:scale-95"
@@ -1476,7 +1433,6 @@
                                 </svg>
                             </button>
 
-                            {/* Modal */}
                             {showPlanogramModal && (
                                 <div
                                     className="fixed inset-0 z-[100] bg-black/75 flex items-center justify-center p-4"
@@ -1517,7 +1473,6 @@
                             )}
                         </>
                     )}
-
                 </div>
             );
         };
