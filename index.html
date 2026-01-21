@@ -708,7 +708,7 @@
             );
         };
 
-        const PhotoCapture = ({ onPhotoTaken, label, photos }) => {
+        const PhotoCapture = ({ onPhotoTaken, onRemovePhoto, label, photos }) => {
             const handleFileChange = (e) => {
                 const files = Array.from(e.target.files);
                 files.forEach(file => {
@@ -734,7 +734,16 @@
                     />
                     <div className="flex flex-wrap gap-2 mt-2">
                         {photos.map((photo, index) => (
-                            <img key={index} src={photo} alt={`Foto ${index + 1}`} className="w-20 h-20 object-cover rounded" />
+                            <div key={index} className="relative">
+                                <img src={photo} alt={`Foto ${index + 1}`} className="w-20 h-20 object-cover rounded" />
+                                <button
+                                    type="button"
+                                    onClick={() => onRemovePhoto(index)}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md"
+                                >
+                                    ✕
+                                </button>
+                            </div>
                         ))}
                     </div>
                 </div>
@@ -835,6 +844,7 @@
                             trade: '',
                             competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
                             myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+                            totalFaces: ''
                         });
                         setBeforePhotos(ongoingVisit.before_photos || []);
                         setAfterPhotos(ongoingVisit.after_photos || []);
@@ -1159,7 +1169,8 @@
                         p_mayorista: isMayorista ? 'Si' : 'No',
                         cliente_cerrado: isClienteCerrado ? 'Si' : 'No',
                         before_photos: uploadedBefore,
-                        after_photos: uploadedAfter
+                        after_photos: uploadedAfter,
+                        total_faces: newItem.totalFaces ? parseInt(newItem.totalFaces) : null
                     };
                     if (navigator.onLine) {
                         const { error: insertError } = await supabase.from('web_precios').insert([visitData]);
@@ -1193,6 +1204,7 @@
                     trade: '',
                     competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
                     myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+                    totalFaces: ''
                 });
                 setOutOfStockItems(new Set());
                 setBeforePhotos([]);
@@ -1296,6 +1308,7 @@
                             <PhotoCapture
                                 label="Fotos Antes"
                                 onPhotoTaken={(photo) => setBeforePhotos(prev => [...prev, photo])}
+                                onRemovePhoto={(index) => setBeforePhotos(prev => prev.filter((_, i) => i !== index))}
                                 photos={beforePhotos}
                             />
 
@@ -1410,6 +1423,7 @@
                                     <PhotoCapture
                                         label="Fotos Después"
                                         onPhotoTaken={(photo) => setAfterPhotos(prev => [...prev, photo])}
+                                        onRemovePhoto={(index) => setAfterPhotos(prev => prev.filter((_, i) => i !== index))}
                                         photos={afterPhotos}
                                     />
 
@@ -1514,6 +1528,7 @@
                 trade: '',
                 competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
                 myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+                totalFaces: ''
             });
 
             const handleEmpresaLogin = (empresaData) => {
@@ -1548,6 +1563,7 @@
                     trade: '',
                     competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
                     myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+                    totalFaces: ''
                 });
                 setError(null);
                 setSuccessMessage(null);
