@@ -1383,6 +1383,27 @@
                                                     </button>
                                                 </div>
                                             </div>
+                                            <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                            <label className="block text-gray-800 font-semibold mb-2">
+                                                Total de caras/frentes del anaquel completo
+                                                <span className="text-indigo-600 ml-1">(incluye competencia + nuestros productos)</span>
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    placeholder="Ej: 48"
+                                                    value={newItem.totalFaces || ''}
+                                                    onChange={(e) => setNewItem(prev => ({ ...prev, totalFaces: e.target.value }))}
+                                                    className="w-full max-w-xs p-3 border border-gray-300 rounded-xl input-focus"
+                                                    required={!isClienteCerrado}
+                                                />
+                                                <span className="text-gray-500 text-sm">caras</span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Cuenta todas las posiciones visibles en el anaquel (mínimo 1 fila completa)
+                                            </p>
+                                        </div>
                                         </>
                                     )}
 
