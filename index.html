@@ -73,7 +73,6 @@
         const supabaseUrl = 'https://djjylikkocemrlsjxscr.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanlsaWtrb2NlbXJsc2p4c2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNjUyNDEsImV4cCI6MjA3ODc0MTI0MX0.fnv1BKn_o-PYEAPljG0V3dt3b2Uifwn8EEzkP8Aab3M';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
         // Error Boundary
         class ErrorBoundary extends React.Component {
             state = { error: null };
@@ -94,7 +93,6 @@
                 return this.props.children;
             }
         }
-
         const Icon = ({ children, size = 24, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
                  fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -102,20 +100,17 @@
                 {children}
             </svg>
         );
-
         const Plus = ({ size }) => (
             <Icon size={size}>
                 <path d="M5 12h14" />
                 <path d="M12 5v14" />
             </Icon>
         );
-
         const Minus = ({ size }) => (
             <Icon size={size}>
                 <path d="M5 12h14" />
             </Icon>
         );
-
         const Save = ({ size }) => (
             <Icon size={size}>
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -123,13 +118,11 @@
                 <polyline points="7 3 7 8 15 8" />
             </Icon>
         );
-
         const EmpresaLogin = ({ onEmpresaLogin }) => {
             const [empresaNombre, setEmpresaNombre] = useState('');
             const [claveAcceso, setClaveAcceso] = useState('');
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
-
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -158,7 +151,6 @@
                     setLoading(false);
                 }
             };
-
             return (
                 <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
                     <div className="w-full max-w-md bg-white card p-8">
@@ -215,13 +207,11 @@
                 </div>
             );
         };
-
         const PromotorLogin = ({ empresa, onPromotorLogin, onBack }) => {
             const [promoterId, setPromoterId] = useState('');
             const [password, setPassword] = useState('');
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
-
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -281,7 +271,6 @@
                     setLoading(false);
                 }
             };
-
             return (
                 <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
                     <div className="w-full max-w-md bg-white card p-8">
@@ -345,11 +334,9 @@
                 </div>
             );
         };
-
         const TopSellers = ({ empresaId }) => {
             const [topSellers, setTopSellers] = useState([]);
             const [loading, setLoading] = useState(true);
-
             useEffect(() => {
                 const fetchTopSellers = async () => {
                     setLoading(true);
@@ -380,7 +367,6 @@
                 };
                 fetchTopSellers();
             }, [empresaId]);
-
             return (
                 <div className="bg-white card p-5 mb-6 shadow-md">
                     <h3 className="text-lg font-bold text-indigo-700 mb-4 text-center">🔥 Top 5 del Día</h3>
@@ -409,12 +395,10 @@
                 </div>
             );
         };
-
         const UserRank = ({ promoterName, empresaId }) => {
             const [rank, setRank] = useState(null);
             const [total, setTotal] = useState(0);
             const [loading, setLoading] = useState(true);
-
             useEffect(() => {
                 const fetchUserRank = async () => {
                     setLoading(true);
@@ -445,7 +429,6 @@
                 };
                 fetchUserRank();
             }, [promoterName, empresaId]);
-
             return (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-6 border border-blue-100">
                     <h3 className="text-sm font-bold text-blue-700 mb-2">📊 Tu Posición Nacional</h3>
@@ -464,8 +447,7 @@
                 </div>
             );
         };
-
-        const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, isMyItem, onToggleOutOfStock, isOutOfStock }) => {
+        const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, isMyItem, onToggleOutOfStock, isOutOfStock, visitStarted }) => {
             const handleChange = (e) => {
                 const { value } = e.target;
                 onChange(e, type, item.id, 'price');
@@ -477,16 +459,14 @@
                     });
                 }
             };
-
             const isNoStockPresentation = item.presentation === 'SIN STOCK';
             const disableFields = isNoStockPresentation;
-
             return (
-                <div className="flex flex-col sm:flex-row gap-2 mb-2 p-2 bg-gray-50 rounded-lg card">
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2 mb-2 p-2 bg-gray-50 rounded-lg card">
                     <select
                         value={item.presentation}
                         onChange={(e) => onChange(e, type, item.id, 'presentation')}
-                        className="w-full sm:w-1/2 p-3 border border-gray-300 rounded-xl input-focus"
+                        className="w-full sm:w-40 p-3 border border-gray-300 rounded-xl input-focus"
                         required
                     >
                         <option value="">-- Presentación --</option>
@@ -498,14 +478,14 @@
                         value={item.price}
                         onChange={handleChange}
                         disabled={disableFields}
-                        className={`w-full sm:w-1/4 p-3 border rounded-xl input-focus ${errors[item.id] ? 'border-red-500' : 'border-gray-300'} ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
+                        className={`w-full sm:w-32 p-3 border rounded-xl input-focus ${errors[item.id] ? 'border-red-500' : 'border-gray-300'} ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
                         required={!disableFields}
                     />
                     <select
                         value={item.currency}
                         onChange={(e) => onChange(e, type, item.id, 'currency')}
                         disabled={disableFields}
-                        className={`w-full sm:w-1/4 p-3 border border-gray-300 rounded-xl input-focus ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
+                        className={`w-full sm:w-28 p-3 border border-gray-300 rounded-xl input-focus ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
                         required={!disableFields}
                     >
                         <option value="">-- Moneda --</option>
@@ -513,10 +493,10 @@
                     </select>
                     {type === 'myitems' && (
                         <>
-                            <div className="flex flex-col sm:w-1/6">
+                            <div className="flex flex-col sm:w-24">
                                 <input
                                     type="number"
-                                    placeholder="Stock Anaquel (En Unidades)"
+                                    placeholder="Stock Anaquel"
                                     value={item.stock_shelf}
                                     onChange={(e) => onChange(e, type, item.id, 'stock_shelf')}
                                     disabled={isOutOfStock || disableFields}
@@ -524,10 +504,10 @@
                                     required={!isOutOfStock && !disableFields}
                                 />
                             </div>
-                            <div className="flex flex-col sm:w-1/6">
+                            <div className="flex flex-col sm:w-24">
                                 <input
                                     type="number"
-                                    placeholder="Stock Bodega (En Bultos)"
+                                    placeholder="Stock Bodega"
                                     value={item.stock_warehouse}
                                     onChange={(e) => onChange(e, type, item.id, 'stock_warehouse')}
                                     disabled={isOutOfStock || disableFields}
@@ -535,18 +515,30 @@
                                     required={!isOutOfStock && !disableFields}
                                 />
                             </div>
-                            <div className="flex flex-col sm:w-1/6">
+                            <div className="flex flex-col sm:w-20">
                                 <input
                                     type="number"
+                                    min="0"
+                                    placeholder="Caras Antes"
+                                    value={item.faces_before ?? ''}
+                                    onChange={(e) => onChange(e, type, item.id, 'faces_before')}
+                                    disabled={disableFields || isOutOfStock || visitStarted}
+                                    className={`w-full p-3 border border-gray-300 rounded-xl input-focus text-center ${(disableFields || visitStarted) ? 'bg-gray-200 cursor-not-allowed' : ''}`}
+                                />
+                            </div>
+                            <div className="flex flex-col sm:w-20">
+                                <input
+                                    type="number"
+                                    min="0"
                                     placeholder="Caras Después"
-                                    value={item.faces_after}
+                                    value={item.faces_after ?? ''}
                                     onChange={(e) => onChange(e, type, item.id, 'faces_after')}
                                     disabled={disableFields}
-                                    className={`w-full p-3 border border-gray-300 rounded-xl input-focus ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
+                                    className={`w-full p-3 border border-gray-300 rounded-xl input-focus text-center ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
                                     required={!disableFields}
                                 />
                             </div>
-                            <div className="flex items-center justify-center sm:w-1/6">
+                            <div className="flex items-center justify-center sm:w-28 pt-2 sm:pt-0">
                                 <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -564,19 +556,18 @@
                         <button
                             type="button"
                             onClick={() => onRemove(type, item.id)}
-                            className="btn-icon text-red-600 hover:text-red-800 p-2 rounded-full transition-transform duration-200"
+                            className="btn-icon text-red-600 hover:text-red-800 p-2 rounded-full transition-transform duration-200 self-center"
                             aria-label="Eliminar"
                         >
                             <Minus size={24} />
                         </button>
                     )}
                     {errors[item.id] && (
-                        <div className="error-text col-span-full">{errors[item.id]}</div>
+                        <div className="error-text w-full">{errors[item.id]}</div>
                     )}
                 </div>
             );
         };
-
         const ClienteAutocomplete = ({ value, onChange, empresaId }) => {
             const [isOpen, setIsOpen] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
@@ -584,7 +575,6 @@
             const [loading, setLoading] = useState(false);
             const wrapperRef = useRef(null);
             const debounceTimer = useRef(null);
-
             const buscarClientes = async (term = '') => {
                 setLoading(true);
                 try {
@@ -603,7 +593,6 @@
                     setLoading(false);
                 }
             };
-
             useEffect(() => {
                 function handleClickOutside(event) {
                     if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -615,44 +604,31 @@
                     document.removeEventListener("mousedown", handleClickOutside);
                 };
             }, []);
-
             useEffect(() => {
-                if (debounceTimer.current) {
-                    clearTimeout(debounceTimer.current);
-                }
+                if (debounceTimer.current) clearTimeout(debounceTimer.current);
                 debounceTimer.current = setTimeout(() => {
                     buscarClientes(searchTerm);
                 }, 300);
                 return () => {
-                    if (debounceTimer.current) {
-                        clearTimeout(debounceTimer.current);
-                    }
+                    if (debounceTimer.current) clearTimeout(debounceTimer.current);
                 };
             }, [searchTerm, empresaId]);
-
             const handleFocus = () => {
                 setIsOpen(true);
-                if (!searchTerm && value) {
-                    setSearchTerm(value);
-                }
-                if (!searchTerm) {
-                    buscarClientes('');
-                }
+                if (!searchTerm && value) setSearchTerm(value);
+                if (!searchTerm) buscarClientes('');
             };
-
             const handleChange = (e) => {
                 const term = e.target.value;
                 setSearchTerm(term);
                 onChange(term);
                 setIsOpen(true);
             };
-
             const handleSelect = (clienteName) => {
                 onChange(clienteName);
                 setSearchTerm(clienteName);
                 setIsOpen(false);
             };
-
             return (
                 <div className="relative" ref={wrapperRef}>
                     <input
@@ -667,9 +643,7 @@
                     {isOpen && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg dropdown-menu">
                             {loading ? (
-                                <div className="p-3 text-gray-500 text-sm">
-                                    Buscando comercios...
-                                </div>
+                                <div className="p-3 text-gray-500 text-sm">Buscando comercios...</div>
                             ) : clientes.length > 0 ? (
                                 clientes.map((cliente, index) => (
                                     <div
@@ -696,7 +670,6 @@
                 </div>
             );
         };
-
         const PhotoCapture = ({ onPhotoTaken, onRemovePhoto, label, photos }) => {
             const handleFileChange = (e) => {
                 const files = Array.from(e.target.files);
@@ -708,7 +681,6 @@
                     reader.readAsDataURL(file);
                 });
             };
-
             return (
                 <div className="mb-4">
                     <h3 className="text-gray-700 font-bold text-sm mb-2">{label}</h3>
@@ -738,7 +710,6 @@
                 </div>
             );
         };
-
         const DataEntryScreen = ({ empresa, promoterName, promoterId, initialState, initialZone, newItem, setNewItem, error, setError, successMessage, setSuccessMessage, loading, setLoading, onLogout }) => {
             const [presentationsCompetidor, setPresentationsCompetidor] = useState([]);
             const [presentationsMy, setPresentationsMy] = useState([]);
@@ -758,6 +729,20 @@
             const [sessionData, setSessionData] = useState(null);
             const [showPlanogramModal, setShowPlanogramModal] = useState(false);
             const [visitStarted, setVisitStarted] = useState(false);
+
+            // Cálculo automático de caras nuestras después
+            const ourFacesAfter = React.useMemo(() => {
+                return newItem.myitems
+                    .filter(item => item.presentation !== 'SIN STOCK' && item.presentation !== '')
+                    .reduce((sum, item) => sum + (parseInt(item.faces_after) || 0), 0);
+            }, [newItem.myitems]);
+
+            // Cálculo de caras nuestras antes (solo informativo)
+            const ourFacesBeforeCalc = React.useMemo(() => {
+                return newItem.myitems
+                    .filter(item => item.presentation !== 'SIN STOCK' && item.presentation !== '')
+                    .reduce((sum, item) => sum + (parseInt(item.faces_before) || 0), 0);
+            }, [newItem.myitems]);
 
             useEffect(() => {
                 const fetchData = async () => {
@@ -833,7 +818,7 @@
                             zone: '',
                             trade: '',
                             competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_after: '' }],
+                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
                             totalFacesBefore: '',
                             ourFacesBefore: '',
                             totalFaces: ''
@@ -918,6 +903,7 @@
                                 if (type === 'myitems') {
                                     updatedItem.stock_shelf = '';
                                     updatedItem.stock_warehouse = '';
+                                    updatedItem.faces_before = '';
                                     updatedItem.faces_after = '';
                                 }
                             }
@@ -950,6 +936,7 @@
                         currency: '',
                         stock_shelf: '',
                         stock_warehouse: '',
+                        faces_before: '',
                         faces_after: ''
                     }]
                 }));
@@ -1038,6 +1025,7 @@
                 setSuccessMessage(null);
                 setGeoError(null);
                 setPriceWarning('');
+
                 if (!isClienteCerrado) {
                     const allItems = [...newItem.competitoritems, ...newItem.myitems];
                     const arePricesValid = validatePrices(allItems, isMayorista);
@@ -1046,11 +1034,13 @@
                         return;
                     }
                 }
+
                 if (afterPhotos.length === 0) {
                     setError('Debes tomar al menos una foto "después" para finalizar la visita.');
                     setLoading(false);
                     return;
                 }
+
                 let latitude = null;
                 let longitude = null;
                 try {
@@ -1067,6 +1057,7 @@
                     console.warn("Error de geolocalización:", geoErr.message);
                     setGeoError("No se pudo obtener ubicación. Puedes continuar, pero la visita podría marcarse como no confirmada.");
                 }
+
                 try {
                     let errMsg = [];
                     if (!newItem.state) errMsg.push("Estado");
@@ -1090,6 +1081,7 @@
                         setLoading(false);
                         return;
                     }
+
                     let validCompetitorItems = [];
                     let validMyItems = [];
                     if (!isClienteCerrado) {
@@ -1105,41 +1097,39 @@
                             return;
                         }
                     }
+
                     if (isClienteCerrado && !comments.trim()) {
                         setError("Para cliente cerrado, ingresa un comentario.");
                         setLoading(false);
                         return;
                     }
+
                     const uploadedBefore = [];
                     for (const photoDataUrl of beforePhotos) {
                         const fileName = `before_${crypto.randomUUID()}.jpg`;
                         const file = dataURLtoFile(photoDataUrl, fileName);
                         const { data, error: uploadError } = await supabase.storage
                             .from('visits_photos')
-                            .upload(`before/${fileName}`, file, {
-                                cacheControl: '3600',
-                                upsert: false
-                            });
-                        if (uploadError) {
-                            throw new Error(`Fallo al subir foto antes: ${uploadError.message}`);
-                        }
+                            .upload(`before/${fileName}`, file, { cacheControl: '3600', upsert: false });
+                        if (uploadError) throw new Error(`Fallo al subir foto antes: ${uploadError.message}`);
                         uploadedBefore.push(fileName);
                     }
+
                     const uploadedAfter = [];
                     for (const photoDataUrl of afterPhotos) {
                         const fileName = `after_${crypto.randomUUID()}.jpg`;
                         const file = dataURLtoFile(photoDataUrl, fileName);
                         const { data, error: uploadError } = await supabase.storage
                             .from('visits_photos')
-                            .upload(`after/${fileName}`, file, {
-                                cacheControl: '3600',
-                                upsert: false
-                            });
-                        if (uploadError) {
-                            throw new Error(`Fallo al subir foto después: ${uploadError.message}`);
-                        }
+                            .upload(`after/${fileName}`, file, { cacheControl: '3600', upsert: false });
+                        if (uploadError) throw new Error(`Fallo al subir foto después: ${uploadError.message}`);
                         uploadedAfter.push(fileName);
                     }
+
+                    const ourFacesBefore = newItem.myitems
+                        .filter(item => item.presentation !== 'SIN STOCK')
+                        .reduce((sum, item) => sum + (parseInt(item.faces_before) || 0), 0);
+
                     const visitData = {
                         empresa_id: empresa.id,
                         promoter_id: promoterId,
@@ -1158,6 +1148,7 @@
                             currency: item.presentation === 'SIN STOCK' ? null : item.currency,
                             stock_shelf: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_shelf !== '' ? parseFloat(item.stock_shelf) : null)),
                             stock_warehouse: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_warehouse !== '' ? parseFloat(item.stock_warehouse) : null)),
+                            faces_before: item.presentation === 'SIN STOCK' ? null : (item.faces_before !== '' ? parseInt(item.faces_before) : null),
                             faces_after: item.presentation === 'SIN STOCK' ? null : (item.faces_after !== '' ? parseInt(item.faces_after) : null)
                         })),
                         latitude,
@@ -1168,9 +1159,11 @@
                         before_photos: uploadedBefore,
                         after_photos: uploadedAfter,
                         total_faces_before: newItem.totalFacesBefore ? parseInt(newItem.totalFacesBefore) : null,
-                        our_faces_before: newItem.ourFacesBefore ? parseInt(newItem.ourFacesBefore) : null,
-                        total_faces: newItem.totalFaces ? parseInt(newItem.totalFaces) : null
+                        our_faces_before: ourFacesBefore || null,
+                        total_faces: newItem.totalFaces ? parseInt(newItem.totalFaces) : null,
+                        our_faces_after: ourFacesAfter || null   // ← suma automática guardada
                     };
+
                     if (navigator.onLine) {
                         const { error: insertError } = await supabase.from('web_precios').insert([visitData]);
                         if (insertError) throw insertError;
@@ -1202,7 +1195,7 @@
                     zone: '',
                     trade: '',
                     competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_after: '' }],
+                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
                     totalFacesBefore: '',
                     ourFacesBefore: '',
                     totalFaces: ''
@@ -1225,7 +1218,7 @@
 
             return (
                 <div className="min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-2 sm:p-4 flex flex-col items-center relative">
-                    <div className="container w-full max-w-md bg-white card p-4 sm:p-6">
+                    <div className="container w-full max-w-4xl bg-white card p-4 sm:p-6">
                         <div className="mb-4">
                             <div className="flex justify-between items-center mb-2">
                                 <button
@@ -1317,13 +1310,14 @@
                             {/* Sección Inicial: Datos Antes */}
                             <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-4">
                                 <h3 className="text-indigo-800 font-bold text-sm mb-3">Datos Iniciales (Antes)</h3>
-                                <div className="flex flex-col gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                                     <div>
                                         <label className="block text-gray-700 text-xs font-bold mb-1">
                                             Caras Totales ANTES (Anaquel Completo)
                                         </label>
                                         <input
                                             type="number"
+                                            min="0"
                                             placeholder="Ej: 50"
                                             value={newItem.totalFacesBefore}
                                             onChange={(e) => setNewItem(prev => ({ ...prev, totalFacesBefore: e.target.value }))}
@@ -1335,15 +1329,23 @@
                                         <label className="block text-gray-700 text-xs font-bold mb-1">
                                             Caras Totales NUESTRAS (Antes)
                                         </label>
-                                        <input
-                                            type="number"
-                                            placeholder="Ej: 15"
-                                            value={newItem.ourFacesBefore}
-                                            onChange={(e) => setNewItem(prev => ({ ...prev, ourFacesBefore: e.target.value }))}
-                                            className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                                            disabled={visitStarted}
-                                        />
+                                        <div className="w-full p-3 bg-gray-100 border border-gray-300 rounded-xl text-center font-medium">
+                                            {ourFacesBeforeCalc || '—'}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Suma automática de caras por presentación</p>
                                     </div>
+                                </div>
+
+                                <div className="mt-4">
+                                    <p className="text-sm font-semibold text-indigo-700 mb-2">Caras por presentación (Antes)</p>
+                                    {newItem.myitems.map(item => (
+                                        item.presentation && item.presentation !== 'SIN STOCK' && (
+                                            <div key={item.id} className="flex justify-between items-center py-1 text-sm">
+                                                <span>{item.presentation}</span>
+                                                <span className="font-medium">{item.faces_before || '—'}</span>
+                                            </div>
+                                        )
+                                    ))}
                                 </div>
                             </div>
 
@@ -1358,7 +1360,7 @@
                             ) : (
                                 <>
                                     <div className="border-t border-gray-200 my-4"></div>
-                                    
+
                                     <div className="flex items-center">
                                         <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                             <input
@@ -1399,6 +1401,7 @@
                                                         canRemove={newItem.competitoritems.length > 1}
                                                         errors={priceErrors}
                                                         setErrors={setPriceErrors}
+                                                        visitStarted={visitStarted}
                                                     />
                                                 ))}
                                                 <div className="flex justify-end mt-2">
@@ -1413,7 +1416,7 @@
                                             </div>
 
                                             <div>
-                                                <span className="text-gray-700 font-bold text-sm">Nuestros Precios por Unidad</span>
+                                                <span className="text-gray-700 font-bold text-sm">Nuestros Precios y Caras</span>
                                                 {newItem.myitems.map(item => (
                                                     <ItemRow
                                                         key={item.id}
@@ -1429,6 +1432,7 @@
                                                         isMyItem={true}
                                                         onToggleOutOfStock={toggleOutOfStock}
                                                         isOutOfStock={outOfStockItems.has(item.id)}
+                                                        visitStarted={visitStarted}
                                                     />
                                                 ))}
                                                 <div className="flex justify-end mt-2">
@@ -1440,28 +1444,42 @@
                                                         <Plus size={24} />
                                                     </button>
                                                 </div>
+
+                                                {/* Resumen automático de caras nuestras después */}
+                                                <div className="mt-4 p-4 bg-green-50 rounded-xl border border-green-100">
+                                                    <p className="text-green-800 font-medium text-center">
+                                                        Caras totales NUESTRAS DESPUÉS (calculado automáticamente):
+                                                        <span className="text-2xl font-bold ml-2">{ourFacesAfter}</span>
+                                                    </p>
+                                                    <p className="text-xs text-green-700 text-center mt-1">
+                                                        Suma de todas las caras después ingresadas arriba
+                                                    </p>
+                                                </div>
                                             </div>
+
                                             <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                                            <label className="block text-gray-800 font-semibold mb-2">
-                                                Caras Totales DESPUÉS (Anaquel Completo)
-                                                <span className="text-indigo-600 ml-1 text-xs block font-normal">(incluye competencia + nuestros productos)</span>
-                                            </label>
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="Ej: 48"
-                                                    value={newItem.totalFaces || ''}
-                                                    onChange={(e) => setNewItem(prev => ({ ...prev, totalFaces: e.target.value }))}
-                                                    className="w-full max-w-xs p-3 border border-gray-300 rounded-xl input-focus"
-                                                    required={!isClienteCerrado}
-                                                />
-                                                <span className="text-gray-500 text-sm">caras</span>
+                                                <label className="block text-gray-800 font-semibold mb-2">
+                                                    Caras Totales DESPUÉS (Anaquel Completo)
+                                                    <span className="text-indigo-600 ml-1 text-xs block font-normal">
+                                                        (incluye competencia + nuestros productos)
+                                                    </span>
+                                                </label>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="Ej: 48"
+                                                        value={newItem.totalFaces || ''}
+                                                        onChange={(e) => setNewItem(prev => ({ ...prev, totalFaces: e.target.value }))}
+                                                        className="w-full max-w-xs p-3 border border-gray-300 rounded-xl input-focus"
+                                                        required={!isClienteCerrado}
+                                                    />
+                                                    <span className="text-gray-500 text-sm">caras</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Cuenta todas las posiciones visibles en el anaquel (mínimo 1 fila completa)
+                                                </p>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Cuenta todas las posiciones visibles en el anaquel (mínimo 1 fila completa)
-                                            </p>
-                                        </div>
                                         </>
                                     )}
 
@@ -1488,7 +1506,7 @@
                                     <button
                                         type="submit"
                                         disabled={loading || dataLoading}
-                                        className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
+                                        className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 mt-4"
                                     >
                                         <Save size={24} />
                                         {loading ? 'Guardando...' : 'Guardar Datos'}
@@ -1533,7 +1551,6 @@
                                                 ×
                                             </button>
                                         </div>
-
                                         <div className="p-4 bg-gray-100 overflow-auto max-h-[calc(90vh-120px)]">
                                             <img
                                                 src={`${supabaseUrl}/storage/v1/object/public/visits_photos/${empresa.planogramImage}`}
@@ -1544,7 +1561,6 @@
                                                 }}
                                             />
                                         </div>
-
                                         <div className="p-3 text-center text-sm text-gray-500 border-t">
                                             Toca fuera para cerrar
                                         </div>
@@ -1556,7 +1572,6 @@
                 </div>
             );
         };
-
         const App = () => {
             const [step, setStep] = useState(1);
             const [empresa, setEmpresa] = useState(null);
@@ -1573,14 +1588,14 @@
                 trade: '',
                 competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
                 myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+                totalFacesBefore: '',
+                ourFacesBefore: '',
                 totalFaces: ''
             });
-
             const handleEmpresaLogin = (empresaData) => {
                 setEmpresa(empresaData);
                 setStep(2);
             };
-
             const handlePromotorLogin = (id, name, estadoNombre, zonaNombre) => {
                 setPromoterId(id);
                 setPromoterName(name);
@@ -1589,12 +1604,10 @@
                 setNewItem(prev => ({ ...prev, state: estadoNombre, zone: zonaNombre }));
                 setStep(3);
             };
-
             const handleBackToEmpresa = () => {
                 setStep(1);
                 setEmpresa(null);
             };
-
             const handleLogout = () => {
                 setStep(1);
                 setEmpresa(null);
@@ -1607,7 +1620,7 @@
                     zone: '',
                     trade: '',
                     competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_after: '' }],
+                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
                     totalFacesBefore: '',
                     ourFacesBefore: '',
                     totalFaces: ''
@@ -1615,7 +1628,6 @@
                 setError(null);
                 setSuccessMessage(null);
             };
-
             return (
                 <ErrorBoundary>
                     <div className="font-sans antialiased">
@@ -1649,7 +1661,6 @@
                 </ErrorBoundary>
             );
         };
-
         try {
             const container = document.getElementById('root');
             if (container) {
@@ -1659,7 +1670,6 @@
         } catch (e) {
             console.error('Error al renderizar:', e);
         }
-
         async function openDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open('chispaDB', 2);
