@@ -538,17 +538,6 @@
                             <div className="flex flex-col sm:w-1/6">
                                 <input
                                     type="number"
-                                    placeholder="Caras Antes"
-                                    value={item.faces_before}
-                                    onChange={(e) => onChange(e, type, item.id, 'faces_before')}
-                                    disabled={disableFields}
-                                    className={`w-full p-3 border border-gray-300 rounded-xl input-focus ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-                                    required={!disableFields}
-                                />
-                            </div>
-                            <div className="flex flex-col sm:w-1/6">
-                                <input
-                                    type="number"
                                     placeholder="Caras Después"
                                     value={item.faces_after}
                                     onChange={(e) => onChange(e, type, item.id, 'faces_after')}
@@ -768,6 +757,7 @@
             const [afterPhotos, setAfterPhotos] = useState([]);
             const [sessionData, setSessionData] = useState(null);
             const [showPlanogramModal, setShowPlanogramModal] = useState(false);
+            const [visitStarted, setVisitStarted] = useState(false);
 
             useEffect(() => {
                 const fetchData = async () => {
@@ -843,7 +833,9 @@
                             zone: '',
                             trade: '',
                             competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_after: '' }],
+                            totalFacesBefore: '',
+                            ourFacesBefore: '',
                             totalFaces: ''
                         });
                         setBeforePhotos(ongoingVisit.before_photos || []);
@@ -926,7 +918,6 @@
                                 if (type === 'myitems') {
                                     updatedItem.stock_shelf = '';
                                     updatedItem.stock_warehouse = '';
-                                    updatedItem.faces_before = '';
                                     updatedItem.faces_after = '';
                                 }
                             }
@@ -959,7 +950,6 @@
                         currency: '',
                         stock_shelf: '',
                         stock_warehouse: '',
-                        faces_before: '',
                         faces_after: ''
                     }]
                 }));
@@ -1031,6 +1021,14 @@
                     setPriceWarning('');
                 }
                 return !hasError;
+            };
+
+            const handleStartVisit = () => {
+                if (beforePhotos.length === 0) {
+                    setError('Debes tomar al menos una foto "Antes" para iniciar la visita.');
+                    return;
+                }
+                setVisitStarted(true);
             };
 
             const handleSaveData = async (e) => {
@@ -1160,7 +1158,6 @@
                             currency: item.presentation === 'SIN STOCK' ? null : item.currency,
                             stock_shelf: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_shelf !== '' ? parseFloat(item.stock_shelf) : null)),
                             stock_warehouse: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_warehouse !== '' ? parseFloat(item.stock_warehouse) : null)),
-                            faces_before: item.presentation === 'SIN STOCK' ? null : (item.faces_before !== '' ? parseInt(item.faces_before) : null),
                             faces_after: item.presentation === 'SIN STOCK' ? null : (item.faces_after !== '' ? parseInt(item.faces_after) : null)
                         })),
                         latitude,
@@ -1170,6 +1167,8 @@
                         cliente_cerrado: isClienteCerrado ? 'Si' : 'No',
                         before_photos: uploadedBefore,
                         after_photos: uploadedAfter,
+                        total_faces_before: newItem.totalFacesBefore ? parseInt(newItem.totalFacesBefore) : null,
+                        our_faces_before: newItem.ourFacesBefore ? parseInt(newItem.ourFacesBefore) : null,
                         total_faces: newItem.totalFaces ? parseInt(newItem.totalFaces) : null
                     };
                     if (navigator.onLine) {
@@ -1203,7 +1202,9 @@
                     zone: '',
                     trade: '',
                     competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_after: '' }],
+                    totalFacesBefore: '',
+                    ourFacesBefore: '',
                     totalFaces: ''
                 });
                 setOutOfStockItems(new Set());
@@ -1217,6 +1218,7 @@
                         await store.clear();
                     })();
                 }
+                setVisitStarted(false);
             };
 
             const hasBeforePhotos = beforePhotos.length > 0;
@@ -1312,8 +1314,51 @@
                                 photos={beforePhotos}
                             />
 
-                            {hasBeforePhotos && (
+                            {/* Sección Inicial: Datos Antes */}
+                            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-4">
+                                <h3 className="text-indigo-800 font-bold text-sm mb-3">Datos Iniciales (Antes)</h3>
+                                <div className="flex flex-col gap-3">
+                                    <div>
+                                        <label className="block text-gray-700 text-xs font-bold mb-1">
+                                            Caras Totales ANTES (Anaquel Completo)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="Ej: 50"
+                                            value={newItem.totalFacesBefore}
+                                            onChange={(e) => setNewItem(prev => ({ ...prev, totalFacesBefore: e.target.value }))}
+                                            className="w-full p-3 border border-gray-300 rounded-xl input-focus"
+                                            disabled={visitStarted}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-gray-700 text-xs font-bold mb-1">
+                                            Caras Totales NUESTRAS (Antes)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="Ej: 15"
+                                            value={newItem.ourFacesBefore}
+                                            onChange={(e) => setNewItem(prev => ({ ...prev, ourFacesBefore: e.target.value }))}
+                                            className="w-full p-3 border border-gray-300 rounded-xl input-focus"
+                                            disabled={visitStarted}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {!visitStarted ? (
+                                <button
+                                    type="button"
+                                    onClick={handleStartVisit}
+                                    className="w-full btn-primary text-white font-semibold py-3 rounded-xl shadow-md flex items-center justify-center gap-2"
+                                >
+                                    Continuar con la Visita
+                                </button>
+                            ) : (
                                 <>
+                                    <div className="border-t border-gray-200 my-4"></div>
+                                    
                                     <div className="flex items-center">
                                         <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                             <input
@@ -1398,8 +1443,8 @@
                                             </div>
                                             <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
                                             <label className="block text-gray-800 font-semibold mb-2">
-                                                Total de caras/frentes del anaquel completo
-                                                <span className="text-indigo-600 ml-1">(incluye competencia + nuestros productos)</span>
+                                                Caras Totales DESPUÉS (Anaquel Completo)
+                                                <span className="text-indigo-600 ml-1 text-xs block font-normal">(incluye competencia + nuestros productos)</span>
                                             </label>
                                             <div className="flex items-center gap-3">
                                                 <input
@@ -1562,7 +1607,9 @@
                     zone: '',
                     trade: '',
                     competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_after: '' }],
+                    totalFacesBefore: '',
+                    ourFacesBefore: '',
                     totalFaces: ''
                 });
                 setError(null);
