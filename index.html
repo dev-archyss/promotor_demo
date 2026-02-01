@@ -130,7 +130,6 @@
             const [claveAcceso, setClaveAcceso] = useState('');
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
-
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -159,7 +158,6 @@
                     setLoading(false);
                 }
             };
-
             return (
                 <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
                     <div className="w-full max-w-md bg-white card p-8">
@@ -222,7 +220,6 @@
             const [password, setPassword] = useState('');
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
-
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -282,7 +279,6 @@
                     setLoading(false);
                 }
             };
-
             return (
                 <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
                     <div className="w-full max-w-md bg-white card p-8">
@@ -380,7 +376,6 @@
                 };
                 fetchTopSellers();
             }, [empresaId]);
-
             return (
                 <div className="bg-white card p-5 mb-6 shadow-md">
                     <h3 className="text-lg font-bold text-indigo-700 mb-4 text-center">🔥 Top 5 del Día</h3>
@@ -444,7 +439,6 @@
                 };
                 fetchUserRank();
             }, [promoterName, empresaId]);
-
             return (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-6 border border-blue-100">
                     <h3 className="text-sm font-bold text-blue-700 mb-2">📊 Tu Posición Nacional</h3>
@@ -464,7 +458,7 @@
             );
         };
 
-        const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, isMyItem, onToggleOutOfStock, isOutOfStock, visitStarted }) => {
+        const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, isMyItem, onToggleOutOfStock, isOutOfStock }) => {
             const handleChange = (e) => {
                 const { name, value } = e.target;
                 onChange({ target: { value } }, type, item.id, name);
@@ -542,8 +536,8 @@
                                 placeholder="Caras antes"
                                 value={item.faces_before ?? ''}
                                 onChange={handleChange}
-                                disabled={disableFields || isOutOfStock || visitStarted}
-                                className={`w-full sm:w-24 p-3 border rounded-xl input-focus text-center ${(disableFields || isOutOfStock || visitStarted) ? 'bg-gray-200 cursor-not-allowed' : ''}`}
+                                disabled={disableFields || isOutOfStock}
+                                className={`w-full sm:w-24 p-3 border rounded-xl input-focus text-center ${(disableFields || isOutOfStock) ? 'bg-gray-200 cursor-not-allowed' : ''}`}
                             />
                             <input
                                 type="number"
@@ -595,7 +589,6 @@
             const [loading, setLoading] = useState(false);
             const wrapperRef = useRef(null);
             const debounceTimer = useRef(null);
-
             const buscarClientes = async (term = '') => {
                 setLoading(true);
                 try {
@@ -614,7 +607,6 @@
                     setLoading(false);
                 }
             };
-
             useEffect(() => {
                 function handleClickOutside(event) {
                     if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -622,34 +614,39 @@
                     }
                 }
                 document.addEventListener("mousedown", handleClickOutside);
-                return () => document.removeEventListener("mousedown", handleClickOutside);
+                return () => {
+                    document.removeEventListener("mousedown", handleClickOutside);
+                };
             }, []);
-
             useEffect(() => {
                 if (debounceTimer.current) clearTimeout(debounceTimer.current);
-                debounceTimer.current = setTimeout(() => buscarClientes(searchTerm), 300);
-                return () => clearTimeout(debounceTimer.current);
+                debounceTimer.current = setTimeout(() => {
+                    buscarClientes(searchTerm);
+                }, 300);
+                return () => {
+                    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                };
             }, [searchTerm, empresaId]);
-
             const handleFocus = () => {
                 setIsOpen(true);
-                if (!searchTerm && value) setSearchTerm(value);
-                if (!searchTerm) buscarClientes('');
+                if (!searchTerm && value) {
+                    setSearchTerm(value);
+                }
+                if (!searchTerm) {
+                    buscarClientes('');
+                }
             };
-
             const handleChange = (e) => {
                 const term = e.target.value;
                 setSearchTerm(term);
                 onChange(term);
                 setIsOpen(true);
             };
-
             const handleSelect = (clienteName) => {
                 onChange(clienteName);
                 setSearchTerm(clienteName);
                 setIsOpen(false);
             };
-
             return (
                 <div className="relative" ref={wrapperRef}>
                     <input
@@ -664,7 +661,9 @@
                     {isOpen && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg dropdown-menu">
                             {loading ? (
-                                <div className="p-3 text-gray-500 text-sm">Buscando comercios...</div>
+                                <div className="p-3 text-gray-500 text-sm">
+                                    Buscando comercios...
+                                </div>
                             ) : clientes.length > 0 ? (
                                 clientes.map((cliente, index) => (
                                     <div
@@ -697,11 +696,12 @@
                 const files = Array.from(e.target.files);
                 files.forEach(file => {
                     const reader = new FileReader();
-                    reader.onload = (ev) => onPhotoTaken(ev.target.result);
+                    reader.onload = (ev) => {
+                        onPhotoTaken(ev.target.result);
+                    };
                     reader.readAsDataURL(file);
                 });
             };
-
             return (
                 <div className="mb-4">
                     <h3 className="text-gray-700 font-bold text-sm mb-2">{label}</h3>
@@ -752,21 +752,21 @@
             const [showPlanogramModal, setShowPlanogramModal] = useState(false);
             const [visitStarted, setVisitStarted] = useState(false);
 
-            // Cálculos automáticos
-            const ourFacesBeforeSum = useMemo(() => {
-                return newItem.myitems
+            // Cálculos
+            const ourFacesBeforeSum = useMemo(() => 
+                newItem.myitems
                     .filter(item => item.presentation !== 'SIN STOCK')
-                    .reduce((sum, item) => sum + (parseInt(item.faces_before) || 0), 0);
-            }, [newItem.myitems]);
+                    .reduce((sum, item) => sum + (parseInt(item.faces_before) || 0), 0),
+            [newItem.myitems]);
 
-            const ourFacesAfterSum = useMemo(() => {
-                return newItem.myitems
+            const ourFacesAfterSum = useMemo(() => 
+                newItem.myitems
                     .filter(item => item.presentation !== 'SIN STOCK')
-                    .reduce((sum, item) => sum + (parseInt(item.faces_after) || 0), 0);
-            }, [newItem.myitems]);
+                    .reduce((sum, item) => sum + (parseInt(item.faces_after) || 0), 0),
+            [newItem.myitems]);
 
-            const facesBeforeDifference = newItem.our_faces_before_manual && ourFacesBeforeSum
-                ? Math.abs(parseInt(newItem.our_faces_before_manual) - ourFacesBeforeSum)
+            const facesBeforeDifference = newItem.our_faces_before_manual 
+                ? Math.abs(parseInt(newItem.our_faces_before_manual) - ourFacesBeforeSum) 
                 : null;
 
             useEffect(() => {
@@ -831,7 +831,7 @@
                     const db = await openDB();
                     const tx = db.transaction('pendientes', 'readonly');
                     const store = tx.objectStore('pendientes');
-                    const pending = await new Promise(resolve => {
+                    const pending = await new Promise((resolve) => {
                         const req = store.getAll();
                         req.onsuccess = () => resolve(req.result);
                     });
@@ -864,7 +864,7 @@
                     const db = await openDB();
                     const tx = db.transaction('pendientes', 'readwrite');
                     const store = tx.objectStore('pendientes');
-                    const pending = await new Promise(resolve => {
+                    const pending = await new Promise((resolve) => {
                         const req = store.getAll();
                         req.onsuccess = () => resolve(req.result);
                     });
@@ -873,7 +873,7 @@
                             const uploadedBefore = [];
                             for (const photo of item.before_photos || []) {
                                 const file = dataURLtoFile(photo, `before_${crypto.randomUUID()}.jpg`);
-                                const { error } = await supabase.storage
+                                const { data, error } = await supabase.storage
                                     .from('visits_photos')
                                     .upload(`before/${file.name}`, file);
                                 if (error) throw error;
@@ -882,7 +882,7 @@
                             const uploadedAfter = [];
                             for (const photo of item.after_photos || []) {
                                 const file = dataURLtoFile(photo, `after_${crypto.randomUUID()}.jpg`);
-                                const { error } = await supabase.storage
+                                const { data, error } = await supabase.storage
                                     .from('visits_photos')
                                     .upload(`after/${file.name}`, file);
                                 if (error) throw error;
@@ -892,7 +892,7 @@
                             item.after_photos = uploadedAfter;
                             const { error: insertError } = await supabase.from('web_precios').insert([item]);
                             if (insertError) throw insertError;
-                            await new Promise(resolve => {
+                            await new Promise((resolve) => {
                                 const delReq = store.delete(item.id);
                                 delReq.onsuccess = resolve;
                             });
@@ -910,7 +910,9 @@
             const dataURLtoFile = (dataurl, filename) => {
                 let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
                     bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-                while (n--) u8arr[n] = bstr.charCodeAt(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
                 return new File([u8arr], filename, { type: mime });
             };
 
@@ -990,8 +992,11 @@
             const toggleOutOfStock = (id) => {
                 setOutOfStockItems(prev => {
                     const newSet = new Set(prev);
-                    if (newSet.has(id)) newSet.delete(id);
-                    else newSet.add(id);
+                    if (newSet.has(id)) {
+                        newSet.delete(id);
+                    } else {
+                        newSet.add(id);
+                    }
                     return newSet;
                 });
             };
@@ -1091,7 +1096,8 @@
                             .eq('trade_name', newItem.trade)
                             .eq('empresa_id', empresa.id)
                             .single();
-                        if (!clienteData || clienteData.trade_name !== newItem.trade) {
+                        const isValidTrade = clienteData?.trade_name === newItem.trade;
+                        if (!isValidTrade) {
                             errMsg.push("Comercio (debes seleccionar un comercio válido de la lista)");
                         }
                     }
@@ -1101,18 +1107,20 @@
                         return;
                     }
 
-                    let validCompetitorItems = newItem.competitoritems.filter(item =>
-                        item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
-                    );
-
-                    let validMyItems = newItem.myitems.filter(item =>
-                        item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
-                    );
-
-                    if (!isClienteCerrado && validCompetitorItems.length === 0 && validMyItems.length === 0) {
-                        setError("Agrega al menos un ítem completo.");
-                        setLoading(false);
-                        return;
+                    let validCompetitorItems = [];
+                    let validMyItems = [];
+                    if (!isClienteCerrado) {
+                        validCompetitorItems = newItem.competitoritems.filter(item =>
+                            item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
+                        );
+                        validMyItems = newItem.myitems.filter(item =>
+                            item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
+                        );
+                        if (validCompetitorItems.length === 0 && validMyItems.length === 0) {
+                            setError("Agrega al menos un ítem completo.");
+                            setLoading(false);
+                            return;
+                        }
                     }
 
                     if (isClienteCerrado && !comments.trim()) {
@@ -1125,10 +1133,15 @@
                     for (const photoDataUrl of beforePhotos) {
                         const fileName = `before_${crypto.randomUUID()}.jpg`;
                         const file = dataURLtoFile(photoDataUrl, fileName);
-                        const { error: uploadError } = await supabase.storage
+                        const { data, error: uploadError } = await supabase.storage
                             .from('visits_photos')
-                            .upload(`before/${fileName}`, file, { cacheControl: '3600', upsert: false });
-                        if (uploadError) throw uploadError;
+                            .upload(`before/${fileName}`, file, {
+                                cacheControl: '3600',
+                                upsert: false
+                            });
+                        if (uploadError) {
+                            throw new Error(`Fallo al subir foto antes: ${uploadError.message}`);
+                        }
                         uploadedBefore.push(fileName);
                     }
 
@@ -1136,10 +1149,15 @@
                     for (const photoDataUrl of afterPhotos) {
                         const fileName = `after_${crypto.randomUUID()}.jpg`;
                         const file = dataURLtoFile(photoDataUrl, fileName);
-                        const { error: uploadError } = await supabase.storage
+                        const { data, error: uploadError } = await supabase.storage
                             .from('visits_photos')
-                            .upload(`after/${fileName}`, file, { cacheControl: '3600', upsert: false });
-                        if (uploadError) throw uploadError;
+                            .upload(`after/${fileName}`, file, {
+                                cacheControl: '3600',
+                                upsert: false
+                            });
+                        if (uploadError) {
+                            throw new Error(`Fallo al subir foto después: ${uploadError.message}`);
+                        }
                         uploadedAfter.push(fileName);
                     }
 
@@ -1217,6 +1235,14 @@
                 setOutOfStockItems(new Set());
                 setBeforePhotos([]);
                 setAfterPhotos([]);
+                if (navigator.onLine) {
+                    (async () => {
+                        const db = await openDB();
+                        const tx = db.transaction('pendientes', 'readwrite');
+                        const store = tx.objectStore('pendientes');
+                        await store.clear();
+                    })();
+                }
                 setVisitStarted(false);
             };
 
@@ -1311,7 +1337,6 @@
                                 photos={beforePhotos}
                             />
 
-                            {/* Previsita - solo antes de iniciar la visita */}
                             {!visitStarted && (
                                 <div className="bg-indigo-50 p-5 rounded-xl border border-indigo-100">
                                     <h3 className="text-indigo-800 font-bold text-base mb-4">Previsita - Estado inicial del anaquel</h3>
@@ -1369,7 +1394,7 @@
                                 <>
                                     <div className="border-t border-gray-200 my-4"></div>
 
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center">
                                         <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                             <input
                                                 type="checkbox"
@@ -1379,7 +1404,8 @@
                                             />
                                             Precios Mayoristas
                                         </label>
-
+                                    </div>
+                                    <div className="flex items-center">
                                         <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                             <input
                                                 type="checkbox"
@@ -1394,7 +1420,7 @@
                                     {!isClienteCerrado && (
                                         <>
                                             <div>
-                                                <span className="block text-gray-700 font-bold text-sm mb-2">Precios Competencia por Unidad</span>
+                                                <span className="text-gray-700 font-bold text-sm">Precios Competencia por Unidad</span>
                                                 {newItem.competitoritems.map(item => (
                                                     <ItemRow
                                                         key={item.id}
@@ -1407,7 +1433,6 @@
                                                         canRemove={newItem.competitoritems.length > 1}
                                                         errors={priceErrors}
                                                         setErrors={setPriceErrors}
-                                                        visitStarted={visitStarted}
                                                     />
                                                 ))}
                                                 <div className="flex justify-end mt-2">
@@ -1422,7 +1447,7 @@
                                             </div>
 
                                             <div>
-                                                <span className="block text-gray-700 font-bold text-sm mb-2">Nuestros Precios y Caras</span>
+                                                <span className="text-gray-700 font-bold text-sm">Nuestros Precios y Caras</span>
                                                 {newItem.myitems.map(item => (
                                                     <ItemRow
                                                         key={item.id}
@@ -1438,7 +1463,6 @@
                                                         isMyItem={true}
                                                         onToggleOutOfStock={toggleOutOfStock}
                                                         isOutOfStock={outOfStockItems.has(item.id)}
-                                                        visitStarted={visitStarted}
                                                     />
                                                 ))}
                                                 <div className="flex justify-end mt-2">
@@ -1453,11 +1477,11 @@
 
                                                 <div className="mt-5 p-4 bg-green-50 rounded-xl border border-green-100 text-center">
                                                     <p className="text-green-800 font-medium text-lg">
-                                                        Caras totales NUESTRAS DESPUÉS (calculado):
+                                                        Caras totales NUESTRAS DESPUÉS (calculado automáticamente):
                                                         <span className="text-2xl font-bold ml-2">{ourFacesAfterSum}</span>
                                                     </p>
                                                     <p className="text-sm text-green-700 mt-1">
-                                                        Suma automática de las caras después ingresadas arriba
+                                                        Suma de todas las caras después ingresadas arriba
                                                     </p>
                                                 </div>
                                             </div>
@@ -1509,7 +1533,7 @@
                                     <button
                                         type="submit"
                                         disabled={loading || dataLoading}
-                                        className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 mt-6"
+                                        className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
                                     >
                                         <Save size={24} />
                                         {loading ? 'Guardando...' : 'Guardar Datos'}
@@ -1519,6 +1543,7 @@
                         </form>
                     </div>
 
+                    {/* Botón flotante y Modal del Planograma */}
                     {empresa?.planogramImage && (
                         <>
                             <button
@@ -1532,7 +1557,6 @@
                                     <polyline points="21 15 16 10 5 21"/>
                                 </svg>
                             </button>
-
                             {showPlanogramModal && (
                                 <div
                                     className="fixed inset-0 z-[100] bg-black/75 flex items-center justify-center p-4"
@@ -1585,7 +1609,6 @@
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
             const [successMessage, setSuccessMessage] = useState(null);
-
             const [newItem, setNewItem] = useState({
                 state: '',
                 zone: '',
@@ -1596,12 +1619,10 @@
                 our_faces_before_manual: '',
                 totalFaces: ''
             });
-
             const handleEmpresaLogin = (empresaData) => {
                 setEmpresa(empresaData);
                 setStep(2);
             };
-
             const handlePromotorLogin = (id, name, estadoNombre, zonaNombre) => {
                 setPromoterId(id);
                 setPromoterName(name);
@@ -1610,12 +1631,10 @@
                 setNewItem(prev => ({ ...prev, state: estadoNombre, zone: zonaNombre }));
                 setStep(3);
             };
-
             const handleBackToEmpresa = () => {
                 setStep(1);
                 setEmpresa(null);
             };
-
             const handleLogout = () => {
                 setStep(1);
                 setEmpresa(null);
@@ -1636,7 +1655,6 @@
                 setError(null);
                 setSuccessMessage(null);
             };
-
             return (
                 <ErrorBoundary>
                     <div className="font-sans antialiased">
