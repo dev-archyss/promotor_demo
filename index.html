@@ -75,6 +75,15 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanlsaWtrb2NlbXJsc2p4c2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNjUyNDEsImV4cCI6MjA3ODc0MTI0MX0.fnv1BKn_o-PYEAPljG0V3dt3b2Uifwn8EEzkP8Aab3M';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
+        // Debounce helper
+        const debounce = (func, wait) => {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func(...args), wait);
+            };
+        };
+
         // Error Boundary
         class ErrorBoundary extends React.Component {
             state = { error: null };
@@ -130,6 +139,7 @@
             const [claveAcceso, setClaveAcceso] = useState('');
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
+
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -158,6 +168,7 @@
                     setLoading(false);
                 }
             };
+
             return (
                 <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
                     <div className="w-full max-w-md bg-white card p-8">
@@ -220,6 +231,7 @@
             const [password, setPassword] = useState('');
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
+
             const handleLogin = async (e) => {
                 e.preventDefault();
                 setLoading(true);
@@ -279,6 +291,7 @@
                     setLoading(false);
                 }
             };
+
             return (
                 <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
                     <div className="w-full max-w-md bg-white card p-8">
@@ -346,6 +359,7 @@
         const TopSellers = ({ empresaId }) => {
             const [topSellers, setTopSellers] = useState([]);
             const [loading, setLoading] = useState(true);
+
             useEffect(() => {
                 const fetchTopSellers = async () => {
                     setLoading(true);
@@ -376,6 +390,7 @@
                 };
                 fetchTopSellers();
             }, [empresaId]);
+
             return (
                 <div className="bg-white card p-5 mb-6 shadow-md">
                     <h3 className="text-lg font-bold text-indigo-700 mb-4 text-center">🔥 Top 5 del Día</h3>
@@ -409,6 +424,7 @@
             const [rank, setRank] = useState(null);
             const [total, setTotal] = useState(0);
             const [loading, setLoading] = useState(true);
+
             useEffect(() => {
                 const fetchUserRank = async () => {
                     setLoading(true);
@@ -439,6 +455,7 @@
                 };
                 fetchUserRank();
             }, [promoterName, empresaId]);
+
             return (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-6 border border-blue-100">
                     <h3 className="text-sm font-bold text-blue-700 mb-2">📊 Tu Posición Nacional</h3>
@@ -589,6 +606,7 @@
             const [loading, setLoading] = useState(false);
             const wrapperRef = useRef(null);
             const debounceTimer = useRef(null);
+
             const buscarClientes = async (term = '') => {
                 setLoading(true);
                 try {
@@ -607,6 +625,7 @@
                     setLoading(false);
                 }
             };
+
             useEffect(() => {
                 function handleClickOutside(event) {
                     if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -614,10 +633,9 @@
                     }
                 }
                 document.addEventListener("mousedown", handleClickOutside);
-                return () => {
-                    document.removeEventListener("mousedown", handleClickOutside);
-                };
+                return () => document.removeEventListener("mousedown", handleClickOutside);
             }, []);
+
             useEffect(() => {
                 if (debounceTimer.current) clearTimeout(debounceTimer.current);
                 debounceTimer.current = setTimeout(() => {
@@ -627,26 +645,26 @@
                     if (debounceTimer.current) clearTimeout(debounceTimer.current);
                 };
             }, [searchTerm, empresaId]);
+
             const handleFocus = () => {
                 setIsOpen(true);
-                if (!searchTerm && value) {
-                    setSearchTerm(value);
-                }
-                if (!searchTerm) {
-                    buscarClientes('');
-                }
+                if (!searchTerm && value) setSearchTerm(value);
+                if (!searchTerm) buscarClientes('');
             };
+
             const handleChange = (e) => {
                 const term = e.target.value;
                 setSearchTerm(term);
                 onChange(term);
                 setIsOpen(true);
             };
+
             const handleSelect = (clienteName) => {
                 onChange(clienteName);
                 setSearchTerm(clienteName);
                 setIsOpen(false);
             };
+
             return (
                 <div className="relative" ref={wrapperRef}>
                     <input
@@ -661,9 +679,7 @@
                     {isOpen && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg dropdown-menu">
                             {loading ? (
-                                <div className="p-3 text-gray-500 text-sm">
-                                    Buscando comercios...
-                                </div>
+                                <div className="p-3 text-gray-500 text-sm">Buscando comercios...</div>
                             ) : clientes.length > 0 ? (
                                 clientes.map((cliente, index) => (
                                     <div
@@ -680,9 +696,7 @@
                                         No se encontraron comercios que contengan "{searchTerm}"
                                     </div>
                                 ) : (
-                                    <div className="p-3 text-gray-500 text-sm">
-                                        Escribe para buscar comercios
-                                    </div>
+                                    <div className="p-3 text-gray-500 text-sm">Escribe para buscar comercios</div>
                                 )
                             )}
                         </div>
@@ -692,47 +706,96 @@
         };
 
         const PhotoCapture = ({ onPhotoTaken, onRemovePhoto, label, photos }) => {
+            const cameraInputRef = useRef(null);
+            const galleryInputRef = useRef(null);
+
             const handleFileChange = (e) => {
-                const files = Array.from(e.target.files);
+                const files = Array.from(e.target.files || []);
                 files.forEach(file => {
+                    if (!file.type.startsWith('image/')) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         onPhotoTaken(ev.target.result);
                     };
                     reader.readAsDataURL(file);
                 });
+                e.target.value = ''; // reset para poder seleccionar la misma foto otra vez
             };
+
             return (
-                <div className="mb-4">
-                    <h3 className="text-gray-700 font-bold text-sm mb-2">{label}</h3>
-                    <p className="text-gray-600 text-sm mb-2">Asegúrate de que las fotos muestren claramente todas las caras del anaquel.</p>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        multiple
-                        onChange={handleFileChange}
-                        className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                    />
-                    <div className="flex flex-wrap gap-2 mt-2">
-                        {photos.map((photo, index) => (
-                            <div key={index} className="relative">
-                                <img src={photo} alt={`Foto ${index + 1}`} className="w-20 h-20 object-cover rounded" />
-                                <button
-                                    type="button"
-                                    onClick={() => onRemovePhoto(index)}
-                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        ))}
+                <div className="mb-6">
+                    <h3 className="text-gray-700 font-bold text-base mb-3">{label}</h3>
+                    <p className="text-gray-600 text-sm mb-4">
+                        {label.includes("Antes") 
+                            ? "Mínimo 1 foto del anaquel antes de intervenir"
+                            : "Mínimo 1 foto del anaquel después de intervenir"}
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        {/* Botón Cámara */}
+                        <label className="flex flex-col items-center justify-center p-5 bg-indigo-50 border-2 border-indigo-200 rounded-xl cursor-pointer hover:bg-indigo-100 active:bg-indigo-200 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-indigo-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-indigo-700 font-semibold">Tomar foto</span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                multiple
+                                onChange={handleFileChange}
+                                ref={cameraInputRef}
+                                className="hidden"
+                            />
+                        </label>
+
+                        {/* Botón Galería */}
+                        <label className="flex flex-col items-center justify-center p-5 bg-purple-50 border-2 border-purple-200 rounded-xl cursor-pointer hover:bg-purple-100 active:bg-purple-200 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-purple-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-purple-700 font-semibold">Desde galería</span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleFileChange}
+                                ref={galleryInputRef}
+                                className="hidden"
+                            />
+                        </label>
                     </div>
+
+                    {photos.length > 0 && (
+                        <div>
+                            <p className="text-sm text-gray-600 mb-3">
+                                {photos.length} foto{photos.length !== 1 ? 's' : ''} seleccionada{photos.length !== 1 ? 's' : ''}
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                                {photos.map((photo, index) => (
+                                    <div key={index} className="relative">
+                                        <img 
+                                            src={photo} 
+                                            alt={`Foto ${index + 1}`} 
+                                            className="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow-sm"
+                                        />
+                                        <button
+                                            onClick={() => onRemovePhoto(index)}
+                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-md hover:bg-red-600"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
 
-        const DataEntryScreen = ({ empresa, promoterName, promoterId, initialState, initialZone, newItem, setNewItem, error, setError, successMessage, setSuccessMessage, loading, setLoading, onLogout }) => {
+        const DataEntryScreen = ({ empresa, promoterName, promoterId, initialState, initialZone, newItem: initialNewItem, setNewItem: initialSetNewItem, error, setError, successMessage, setSuccessMessage, loading, setLoading, onLogout }) => {
             const [presentationsCompetidor, setPresentationsCompetidor] = useState([]);
             const [presentationsMy, setPresentationsMy] = useState([]);
             const [estados, setEstados] = useState([]);
@@ -752,6 +815,58 @@
             const [showPlanogramModal, setShowPlanogramModal] = useState(false);
             const [visitStarted, setVisitStarted] = useState(false);
 
+            // Estado del formulario
+            const [newItem, setNewItem] = useState(initialNewItem);
+
+            const FORM_STORAGE_KEY = `precio-form-v2-${empresa.id}-${promoterId}`;
+
+            // Cargar formulario guardado
+            useEffect(() => {
+                try {
+                    const saved = localStorage.getItem(FORM_STORAGE_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (!sessionData) {
+                            setNewItem(parsed.newItem || initialNewItem);
+                            setComments(parsed.comments || '');
+                            setIsMayorista(!!parsed.isMayorista);
+                            setIsClienteCerrado(!!parsed.isClienteCerrado);
+                            setBeforePhotos(parsed.beforePhotos || []);
+                            setAfterPhotos(parsed.afterPhotos || []);
+                            setVisitStarted(!!parsed.visitStarted);
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Error al restaurar formulario", err);
+                }
+            }, [empresa.id, promoterId, sessionData]);
+
+            // Guardar con debounce
+            const saveFormDebounced = useRef(
+                debounce(() => {
+                    try {
+                        const data = {
+                            newItem,
+                            comments,
+                            isMayorista,
+                            isClienteCerrado,
+                            beforePhotos,
+                            afterPhotos,
+                            visitStarted
+                        };
+                        localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
+                    } catch (err) {
+                        console.warn("Error guardando en localStorage", err);
+                    }
+                }, 700)
+            ).current;
+
+            useEffect(() => {
+                if (promoterId) {
+                    saveFormDebounced();
+                }
+            }, [newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted, promoterId]);
+
             // Cálculos
             const ourFacesBeforeSum = useMemo(() => 
                 newItem.myitems
@@ -769,6 +884,7 @@
                 ? Math.abs(parseInt(newItem.our_faces_before_manual) - ourFacesBeforeSum) 
                 : null;
 
+            // Cargar datos iniciales
             useEffect(() => {
                 const fetchData = async () => {
                     setDataLoading(true);
@@ -791,10 +907,12 @@
                             .from('web_zonas')
                             .select('id, nombre, estado_id')
                             .order('nombre');
+
                         setPresentationsCompetidor(compData?.map(p => p.presentation) || []);
                         setPresentationsMy(myData?.map(p => p.presentation) || []);
                         setEstados(estadosData || []);
                         setZonas(zonasData || []);
+
                         if (initialState) setNewItem(prev => ({ ...prev, state: initialState }));
                         if (initialZone) setNewItem(prev => ({ ...prev, zone: initialZone }));
                     } catch (e) {
@@ -826,6 +944,7 @@
                 }
             }, [newItem.state, estados, zonas]);
 
+            // Carga de sesión pendiente (IndexedDB)
             useEffect(() => {
                 const loadSession = async () => {
                     const db = await openDB();
@@ -838,16 +957,7 @@
                     const ongoingVisit = pending.find(item => item.promoter_id === promoterId && !item.completed);
                     if (ongoingVisit) {
                         setSessionData(ongoingVisit);
-                        setNewItem(ongoingVisit.newItem || {
-                            state: initialState || '',
-                            zone: '',
-                            trade: '',
-                            competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                            myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
-                            totalFacesBefore: '',
-                            our_faces_before_manual: '',
-                            totalFaces: ''
-                        });
+                        setNewItem(ongoingVisit.newItem || newItem);
                         setBeforePhotos(ongoingVisit.before_photos || []);
                         setAfterPhotos(ongoingVisit.after_photos || []);
                         setComments(ongoingVisit.comments || '');
@@ -858,6 +968,7 @@
                 loadSession();
             }, [promoterId]);
 
+            // Sync pendientes al reconectar
             useEffect(() => {
                 const syncPending = async () => {
                     if (!navigator.onLine) return;
@@ -890,8 +1001,10 @@
                             }
                             item.before_photos = uploadedBefore;
                             item.after_photos = uploadedAfter;
+
                             const { error: insertError } = await supabase.from('web_precios').insert([item]);
                             if (insertError) throw insertError;
+
                             await new Promise((resolve) => {
                                 const delReq = store.delete(item.id);
                                 delReq.onsuccess = resolve;
@@ -910,9 +1023,7 @@
             const dataURLtoFile = (dataurl, filename) => {
                 let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
                     bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-                while (n--) {
-                    u8arr[n] = bstr.charCodeAt(n);
-                }
+                while (n--) u8arr[n] = bstr.charCodeAt(n);
                 return new File([u8arr], filename, { type: mime });
             };
 
@@ -992,11 +1103,8 @@
             const toggleOutOfStock = (id) => {
                 setOutOfStockItems(prev => {
                     const newSet = new Set(prev);
-                    if (newSet.has(id)) {
-                        newSet.delete(id);
-                    } else {
-                        newSet.add(id);
-                    }
+                    if (newSet.has(id)) newSet.delete(id);
+                    else newSet.add(id);
                     return newSet;
                 });
             };
@@ -1135,13 +1243,8 @@
                         const file = dataURLtoFile(photoDataUrl, fileName);
                         const { data, error: uploadError } = await supabase.storage
                             .from('visits_photos')
-                            .upload(`before/${fileName}`, file, {
-                                cacheControl: '3600',
-                                upsert: false
-                            });
-                        if (uploadError) {
-                            throw new Error(`Fallo al subir foto antes: ${uploadError.message}`);
-                        }
+                            .upload(`before/${fileName}`, file, { cacheControl: '3600', upsert: false });
+                        if (uploadError) throw new Error(`Fallo al subir foto antes: ${uploadError.message}`);
                         uploadedBefore.push(fileName);
                     }
 
@@ -1151,13 +1254,8 @@
                         const file = dataURLtoFile(photoDataUrl, fileName);
                         const { data, error: uploadError } = await supabase.storage
                             .from('visits_photos')
-                            .upload(`after/${fileName}`, file, {
-                                cacheControl: '3600',
-                                upsert: false
-                            });
-                        if (uploadError) {
-                            throw new Error(`Fallo al subir foto después: ${uploadError.message}`);
-                        }
+                            .upload(`after/${fileName}`, file, { cacheControl: '3600', upsert: false });
+                        if (uploadError) throw new Error(`Fallo al subir foto después: ${uploadError.message}`);
                         uploadedAfter.push(fileName);
                     }
 
@@ -1235,6 +1333,7 @@
                 setOutOfStockItems(new Set());
                 setBeforePhotos([]);
                 setAfterPhotos([]);
+                localStorage.removeItem(FORM_STORAGE_KEY);
                 if (navigator.onLine) {
                     (async () => {
                         const db = await openDB();
@@ -1331,7 +1430,7 @@
                             </div>
 
                             <PhotoCapture
-                                label="Fotos Antes"
+                                label="Fotos Antes (anaquel inicial)"
                                 onPhotoTaken={(photo) => setBeforePhotos(prev => [...prev, photo])}
                                 onRemovePhoto={(index) => setBeforePhotos(prev => prev.filter((_, i) => i !== index))}
                                 photos={beforePhotos}
@@ -1375,9 +1474,7 @@
                                 <div className={`p-3 rounded-lg text-sm border ${facesBeforeDifference > 2 ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
                                     <strong>Referencia previsita:</strong> {newItem.our_faces_before_manual} caras nuestras
                                     {facesBeforeDifference !== null && facesBeforeDifference > 0 && (
-                                        <span className="ml-2">
-                                            (diferencia con conteo detallado: {facesBeforeDifference})
-                                        </span>
+                                        <span className="ml-2">(diferencia con conteo detallado: {facesBeforeDifference})</span>
                                     )}
                                 </div>
                             )}
@@ -1394,7 +1491,7 @@
                                 <>
                                     <div className="border-t border-gray-200 my-4"></div>
 
-                                    <div className="flex items-center">
+                                    <div className="flex items-center gap-4 mb-2">
                                         <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                             <input
                                                 type="checkbox"
@@ -1404,8 +1501,6 @@
                                             />
                                             Precios Mayoristas
                                         </label>
-                                    </div>
-                                    <div className="flex items-center">
                                         <label className="flex items-center text-sm text-gray-700 cursor-pointer">
                                             <input
                                                 type="checkbox"
@@ -1511,7 +1606,7 @@
                                     )}
 
                                     <PhotoCapture
-                                        label="Fotos Después"
+                                        label="Fotos Después (anaquel final)"
                                         onPhotoTaken={(photo) => setAfterPhotos(prev => [...prev, photo])}
                                         onRemovePhoto={(index) => setAfterPhotos(prev => prev.filter((_, i) => i !== index))}
                                         photos={afterPhotos}
@@ -1609,6 +1704,7 @@
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
             const [successMessage, setSuccessMessage] = useState(null);
+
             const [newItem, setNewItem] = useState({
                 state: '',
                 zone: '',
@@ -1619,10 +1715,12 @@
                 our_faces_before_manual: '',
                 totalFaces: ''
             });
+
             const handleEmpresaLogin = (empresaData) => {
                 setEmpresa(empresaData);
                 setStep(2);
             };
+
             const handlePromotorLogin = (id, name, estadoNombre, zonaNombre) => {
                 setPromoterId(id);
                 setPromoterName(name);
@@ -1631,10 +1729,12 @@
                 setNewItem(prev => ({ ...prev, state: estadoNombre, zone: zonaNombre }));
                 setStep(3);
             };
+
             const handleBackToEmpresa = () => {
                 setStep(1);
                 setEmpresa(null);
             };
+
             const handleLogout = () => {
                 setStep(1);
                 setEmpresa(null);
@@ -1655,6 +1755,7 @@
                 setError(null);
                 setSuccessMessage(null);
             };
+
             return (
                 <ErrorBoundary>
                     <div className="font-sans antialiased">
