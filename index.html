@@ -842,24 +842,63 @@
             }, [empresa.id, promoterId, sessionData]);
 
             // Guardar con debounce
-            const saveFormDebounced = useRef(
-                debounce(() => {
-                    try {
-                        const data = {
-                            newItem,
-                            comments,
-                            isMayorista,
-                            isClienteCerrado,
-                            beforePhotos,
-                            afterPhotos,
-                            visitStarted
-                        };
-                        localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
-                    } catch (err) {
-                        console.warn("Error guardando en localStorage", err);
-                    }
-                }, 700)
-            ).current;
+            // ==================== GUARDADO ROBUSTO (NUEVO) ====================
+
+// Referencia para guardar siempre los datos más recientes (evita closures)
+const formDataRef = useRef({});
+
+// Actualizamos la referencia cada vez que cambia algo
+useEffect(() => {
+    formDataRef.current = {
+        newItem,
+        comments,
+        isMayorista,
+        isClienteCerrado,
+        beforePhotos,
+        afterPhotos,
+        visitStarted
+    };
+}, [newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted]);
+
+// Guardado con debounce (el que ya tenías)
+        const saveFormDebounced = useRef(
+            debounce(() => {
+                try {
+                    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formDataRef.current));
+                } catch (err) {
+                    console.warn("Error guardando en localStorage", err);
+                }
+            }, 700)
+        ).current;
+
+        // 🔥 GUARDADO FORZOSO al salir de la app / fondo / cerrar PWA
+        useEffect(() => {
+            const saveNow = () => {
+                try {
+                    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formDataRef.current));
+                } catch (err) {
+                    console.warn("Error guardando en localStorage (beforeunload)", err);
+                }
+            };
+
+            const handleBeforeUnload = () => saveNow();
+            const handleVisibilityChange = () => {
+                if (document.visibilityState === 'hidden') saveNow();
+            };
+
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            return () => {
+                window.removeEventListener('beforeunload', handleBeforeUnload);
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            };
+        }, []); // solo se monta una vez
+
+        // Guardado normal con debounce (mantienes tu lógica anterior)
+        useEffect(() => {
+            if (promoterId) saveFormDebounced();
+        }, [newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted, promoterId]);
 
             useEffect(() => {
                 if (promoterId) {
