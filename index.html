@@ -63,13 +63,7 @@
         };
     };
 
-    // ── Emojis y colores por línea ──────────────────────────────
-    const LINEA_EMOJIS = {
-        'OLYMPIA': '🏅', 'SAL CELESTIAL': '🧂', 'PARMIGIANA': '🍝',
-        'SAL': '🧂', 'LECHE': '🥛', 'PASTA': '🍝', 'CARAOTAS': '🫘',
-    };
-    const getEmoji = (nombre) => LINEA_EMOJIS[nombre?.toUpperCase()] || '📦';
-
+    // ── Colores rotativos para tarjetas de línea (sin emojis ni nombres hardcodeados) ──
     const CARD_STYLES = [
         { bg: 'bg-indigo-50',  border: 'border-indigo-300', title: 'text-indigo-700',  badge: 'bg-indigo-100 text-indigo-800'  },
         { bg: 'bg-purple-50',  border: 'border-purple-300', title: 'text-purple-700',  badge: 'bg-purple-100 text-purple-800'  },
@@ -344,7 +338,6 @@
 
                     {!loading && !error && lineas.length === 0 && (
                         <div className="text-center py-10">
-                            <div className="text-5xl mb-3">📭</div>
                             <p className="text-gray-600 font-medium">No tienes líneas asignadas.</p>
                             <p className="text-gray-400 text-sm mt-1">Contacta al administrador para que te asigne líneas de producto.</p>
                         </div>
@@ -358,15 +351,12 @@
                                     <button
                                         key={linea.id}
                                         onClick={() => onSelectLinea(linea)}
-                                        className={`linea-card ${style.bg} border-2 ${style.border} p-5 text-left flex flex-col gap-3`}
+                                        className={`linea-card ${style.bg} border-2 ${style.border} p-5 text-left`}
                                     >
-                                        <div className="text-4xl">{getEmoji(linea.nombre)}</div>
-                                        <div>
-                                            <p className={`font-extrabold text-lg ${style.title}`}>{linea.nombre}</p>
-                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${style.badge} mt-1 inline-block`}>
-                                                Iniciar visita →
-                                            </span>
-                                        </div>
+                                        <p className={`font-extrabold text-lg ${style.title}`}>{linea.nombre}</p>
+                                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${style.badge} mt-2 inline-block`}>
+                                            Iniciar visita →
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -375,7 +365,6 @@
 
                     {!loading && lineas.length === 1 && (
                         <div className="text-center py-6">
-                            <div className="text-5xl mb-2">{getEmoji(lineas[0]?.nombre)}</div>
                             <p className="text-gray-600 text-sm">Cargando <strong>{lineas[0]?.nombre}</strong>...</p>
                         </div>
                     )}
@@ -966,7 +955,12 @@
                 {/* Header con info de línea */}
                 <div className="w-full max-w-4xl mb-4 flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                        <span className="text-2xl">{getEmoji(linea.nombre)}</span>
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                            </svg>
+                        </div>
                         <div>
                             <p className="font-extrabold text-indigo-700 text-sm leading-tight">{linea.nombre}</p>
                             <button onClick={onChangeLinea}
