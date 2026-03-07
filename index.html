@@ -4,19 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Captura de Precios</title>
-    <!-- Metaetiquetas para PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#4F46E5">
     <meta name="description" content="App para capturar precios de productos y competidores">
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React y ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.44.2/dist/umd/supabase.min.js"></script>
     <style>
         body {
@@ -31,1866 +26,1253 @@
             button, select, input, textarea { font-size: 1rem; min-height: 48px; }
             .btn-icon { width: 48px; height: 48px; }
         }
-        button, select, input, textarea {
-            transition: all 0.2s ease-in-out;
-        }
-        button:hover:not(:disabled) {
-            transform: scale(1.05);
-        }
-        .card {
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        button, select, input, textarea { transition: all 0.2s ease-in-out; }
+        button:hover:not(:disabled) { transform: scale(1.05); }
+        .card { box-shadow: 0 6px 12px rgba(0,0,0,0.15); border-radius: 1rem; }
+        .input-focus:focus { outline: none; box-shadow: 0 0 8px rgba(79,70,229,0.3); border-color: #4F46E5; }
+        .btn-primary { background: linear-gradient(to right, #4F46E5, #7C3AED); }
+        .btn-primary:hover:not(:disabled) { background: linear-gradient(to right, #4338CA, #6D28D9); }
+        .error-text { color: #dc2626; font-size: 0.75rem; margin-top: 0.25rem; }
+        .dropdown-menu { max-height: 400px; overflow-y: auto; z-index: 50; }
+        /* Tarjetas de línea */
+        .linea-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
             border-radius: 1rem;
         }
-        .input-focus:focus {
-            outline: none;
-            box-shadow: 0 0 8px rgba(79, 70, 229, 0.3);
-            border-color: #4F46E5;
-        }
-        .btn-primary {
-            background: linear-gradient(to right, #4F46E5, #7C3AED);
-        }
-        .btn-primary:hover:not(:disabled) {
-            background: linear-gradient(to right, #4338CA, #6D28D9);
-        }
-        .error-text {
-            color: #dc2626;
-            font-size: 0.75rem;
-            margin-top: 0.25rem;
-        }
-        .dropdown-menu {
-            max-height: 400px;
-            overflow-y: auto;
-            z-index: 50;
-        }
+        .linea-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(79,70,229,0.2); }
+        .linea-card:active { transform: scale(0.97); }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
-        const { createRoot } = ReactDOM;
+<div id="root"></div>
+<script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+    const { createRoot } = ReactDOM;
 
-        // Configuración Supabase
-        const supabaseUrl = 'https://djjylikkocemrlsjxscr.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanlsaWtrb2NlbXJsc2p4c2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNjUyNDEsImV4cCI6MjA3ODc0MTI0MX0.fnv1BKn_o-PYEAPljG0V3dt3b2Uifwn8EEzkP8Aab3M';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    const supabaseUrl = 'https://djjylikkocemrlsjxscr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanlsaWtrb2NlbXJsc2p4c2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNjUyNDEsImV4cCI6MjA3ODc0MTI0MX0.fnv1BKn_o-PYEAPljG0V3dt3b2Uifwn8EEzkP8Aab3M';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // Debounce helper
-        const debounce = (func, wait) => {
-            let timeout;
-            return (...args) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func(...args), wait);
-            };
+    const debounce = (func, wait) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(...args), wait);
         };
+    };
 
-        // Error Boundary
-        class ErrorBoundary extends React.Component {
-            state = { error: null };
-            static getDerivedStateFromError(error) {
-                return { error: error.message };
-            }
-            render() {
-                if (this.state.error) {
-                    return (
-                        <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
-                            <div className="w-full max-w-md bg-white card p-6">
-                                <h2 className="text-xl font-bold text-red-600 mb-4">Error</h2>
-                                <p className="text-gray-600 text-sm">{this.state.error}</p>
-                            </div>
-                        </div>
-                    );
-                }
-                return this.props.children;
-            }
+    // ── Emojis y colores por línea ──────────────────────────────
+    const LINEA_EMOJIS = {
+        'OLYMPIA': '🏅', 'SAL CELESTIAL': '🧂', 'PARMIGIANA': '🍝',
+        'SAL': '🧂', 'LECHE': '🥛', 'PASTA': '🍝', 'CARAOTAS': '🫘',
+    };
+    const getEmoji = (nombre) => LINEA_EMOJIS[nombre?.toUpperCase()] || '📦';
+
+    const CARD_STYLES = [
+        { bg: 'bg-indigo-50',  border: 'border-indigo-300', title: 'text-indigo-700',  badge: 'bg-indigo-100 text-indigo-800'  },
+        { bg: 'bg-purple-50',  border: 'border-purple-300', title: 'text-purple-700',  badge: 'bg-purple-100 text-purple-800'  },
+        { bg: 'bg-blue-50',    border: 'border-blue-300',   title: 'text-blue-700',    badge: 'bg-blue-100 text-blue-800'      },
+        { bg: 'bg-emerald-50', border: 'border-emerald-300',title: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-800'},
+        { bg: 'bg-orange-50',  border: 'border-orange-300', title: 'text-orange-700',  badge: 'bg-orange-100 text-orange-800'  },
+        { bg: 'bg-rose-50',    border: 'border-rose-300',   title: 'text-rose-700',    badge: 'bg-rose-100 text-rose-800'      },
+    ];
+
+    // ════════════════════════════════════════════════════════════
+    // ERROR BOUNDARY
+    // ════════════════════════════════════════════════════════════
+    class ErrorBoundary extends React.Component {
+        state = { error: null };
+        static getDerivedStateFromError(error) { return { error: error.message }; }
+        render() {
+            if (this.state.error) return (
+                <div className="flex items-center justify-center min-h-screen p-4">
+                    <div className="w-full max-w-md bg-white card p-6">
+                        <h2 className="text-xl font-bold text-red-600 mb-4">Error</h2>
+                        <p className="text-gray-600 text-sm">{this.state.error}</p>
+                    </div>
+                </div>
+            );
+            return this.props.children;
         }
+    }
 
-        const Icon = ({ children, size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                 className={`lucide ${className}`}>
-                {children}
-            </svg>
+    // ── Iconos ──────────────────────────────────────────────────
+    const Icon = ({ children, size = 24, className = "" }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+             className={className}>{children}</svg>
+    );
+    const Plus  = ({ size }) => <Icon size={size}><path d="M5 12h14"/><path d="M12 5v14"/></Icon>;
+    const Minus = ({ size }) => <Icon size={size}><path d="M5 12h14"/></Icon>;
+    const Save  = ({ size }) => (
+        <Icon size={size}>
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+        </Icon>
+    );
+    const BackArrow = () => (
+        <Icon size={20}><path d="m15 18-6-6 6-6"/></Icon>
+    );
+
+    // ════════════════════════════════════════════════════════════
+    // STEP 1 — EmpresaLogin
+    // ════════════════════════════════════════════════════════════
+    const EmpresaLogin = ({ onEmpresaLogin }) => {
+        const [empresaNombre, setEmpresaNombre] = useState('');
+        const [claveAcceso, setClaveAcceso]     = useState('');
+        const [loading, setLoading] = useState(false);
+        const [error, setError]     = useState(null);
+
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            setLoading(true); setError(null);
+            try {
+                const { data, error } = await supabase
+                    .from('empresas')
+                    .select('id, nombre, gramaje_base_analisis, unidad_base_analisis, planogram_image')
+                    .eq('nombre', empresaNombre)
+                    .eq('clave_acceso', claveAcceso)
+                    .single();
+                if (error) setError('Empresa o clave incorrecta.');
+                else onEmpresaLogin({ id: data.id, nombre: data.nombre, gramajeBase: data.gramaje_base_analisis, unidadBase: data.unidad_base_analisis, planogramImage: data.planogram_image });
+            } catch { setError('Error al iniciar sesión. Verifica tu conexión.'); }
+            finally { setLoading(false); }
+        };
+
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
+                <div className="w-full max-w-md bg-white card p-8">
+                    <h1 className="text-2xl font-extrabold text-center text-indigo-700 mb-2">📊 Sistema de Captura</h1>
+                    <p className="text-center text-gray-600 mb-6 text-sm">Acceso exclusivo para empresas registradas.</p>
+                    <form onSubmit={handleLogin} className="flex flex-col gap-4">
+                        <div>
+                            <label className="block text-gray-700 text-sm font-semibold mb-1">Empresa</label>
+                            <input type="text" placeholder="Nombre de la empresa" value={empresaNombre}
+                                onChange={e => setEmpresaNombre(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-xl input-focus" required />
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 text-sm font-semibold mb-1">Clave de Acceso</label>
+                            <input type="password" placeholder="Ingresa tu clave" value={claveAcceso}
+                                onChange={e => setClaveAcceso(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-xl input-focus" required />
+                        </div>
+                        <button type="submit" disabled={loading}
+                            className="w-full btn-primary text-white font-semibold py-3 rounded-xl shadow-md disabled:opacity-50">
+                            {loading ? 'Verificando...' : 'Acceder'}
+                        </button>
+                    </form>
+                    {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mt-4 rounded-lg text-sm">{error}</div>}
+                    <div className="text-center text-gray-500 text-xs mt-6">Versión 3.0 • Multi-Línea de Producto</div>
+                </div>
+            </div>
         );
+    };
 
-        const Plus = ({ size }) => (
-            <Icon size={size}>
-                <path d="M5 12h14" />
-                <path d="M12 5v14" />
-            </Icon>
+    // ════════════════════════════════════════════════════════════
+    // STEP 2 — PromotorLogin
+    // ════════════════════════════════════════════════════════════
+    const PromotorLogin = ({ empresa, onPromotorLogin, onBack }) => {
+        const [promoterId, setPromoterId] = useState('');
+        const [password, setPassword]     = useState('');
+        const [loading, setLoading] = useState(false);
+        const [error, setError]     = useState(null);
+
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            setLoading(true); setError(null);
+            try {
+                const { data: pd, error: pe } = await supabase
+                    .from('web_promotores')
+                    .select('promoter_id, promoter_name, estado_id, password, zona_id')
+                    .eq('promoter_id', promoterId)
+                    .eq('empresa_id', empresa.id)
+                    .single();
+                if (pe || !pd) { setError('ID de promotor no encontrado.'); setLoading(false); return; }
+                if (pd.password !== password) { setError('Contraseña incorrecta.'); setLoading(false); return; }
+
+                let estadoNombre = '';
+                if (pd.estado_id) {
+                    const { data: ed } = await supabase.from('web_estados').select('nombre').eq('id', pd.estado_id).single();
+                    estadoNombre = ed?.nombre || '';
+                }
+                let zonaNombre = '';
+                if (pd.zona_id) {
+                    const { data: zd } = await supabase.from('web_zonas').select('nombre').eq('id', pd.zona_id).single();
+                    if (zd) zonaNombre = zd.nombre.replace('Zona ', '');
+                } else {
+                    const zonaNumero = promoterId.replace('promotor_', '').replace(/_/g, '-');
+                    const { data: zf } = await supabase.from('web_zonas').select('nombre').ilike('nombre', `%${zonaNumero}%`).single();
+                    if (zf) zonaNombre = zf.nombre.replace('Zona ', '');
+                }
+                onPromotorLogin(pd.promoter_id, pd.promoter_name, estadoNombre, zonaNombre);
+            } catch (err) {
+                console.error('Error de login:', err);
+                setError('Error al iniciar sesión. Verifica tus credenciales.');
+            } finally { setLoading(false); }
+        };
+
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
+                <div className="w-full max-w-md bg-white card p-8">
+                    <button onClick={onBack} className="flex items-center text-indigo-600 hover:text-indigo-800 mb-4">
+                        <BackArrow /><span className="ml-2">Volver</span>
+                    </button>
+                    <h1 className="text-xl font-bold text-indigo-700 mb-1">Empresa: {empresa.nombre}</h1>
+                    <p className="text-gray-600 text-sm mb-6">Ingresa tu ID de promotor y contraseña</p>
+                    <form onSubmit={handleLogin} className="flex flex-col gap-4">
+                        <div>
+                            <label className="block text-gray-700 text-sm font-semibold mb-1">ID de Promotor</label>
+                            <input type="text" placeholder="Ej: promotor_001" value={promoterId}
+                                onChange={e => setPromoterId(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-xl input-focus" required />
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 text-sm font-semibold mb-1">Contraseña</label>
+                            <input type="password" placeholder="Tu contraseña" value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-xl input-focus" required />
+                        </div>
+                        <button type="submit" disabled={loading}
+                            className="w-full btn-primary text-white font-semibold py-3 rounded-xl shadow-md disabled:opacity-50">
+                            {loading ? 'Verificando...' : 'Iniciar Sesión'}
+                        </button>
+                    </form>
+                    {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mt-4 rounded-lg text-sm">{error}</div>}
+                    <div className="mt-6 text-center text-gray-500 text-xs">Contacta al administrador si no tienes credenciales</div>
+                </div>
+            </div>
         );
+    };
 
-        const Minus = ({ size }) => (
-            <Icon size={size}>
-                <path d="M5 12h14" />
-            </Icon>
-        );
+    // ════════════════════════════════════════════════════════════
+    // STEP 3 — LineaSelector  ← NUEVO
+    // ════════════════════════════════════════════════════════════
+    const LineaSelector = ({ empresa, promoterId, promoterName, onSelectLinea, onLogout }) => {
+        const [lineas, setLineas]   = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [error, setError]     = useState(null);
 
-        const Save = ({ size }) => (
-            <Icon size={size}>
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-            </Icon>
-        );
-
-        const EmpresaLogin = ({ onEmpresaLogin }) => {
-            const [empresaNombre, setEmpresaNombre] = useState('');
-            const [claveAcceso, setClaveAcceso] = useState('');
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState(null);
-
-            const handleLogin = async (e) => {
-                e.preventDefault();
-                setLoading(true);
-                setError(null);
+        useEffect(() => {
+            const fetchLineas = async () => {
+                setLoading(true); setError(null);
                 try {
-                    const { data, error } = await supabase
-                        .from('empresas')
-                        .select('id, nombre, gramaje_base_analisis, unidad_base_analisis, planogram_image')
-                        .eq('nombre', empresaNombre)
-                        .eq('clave_acceso', claveAcceso)
-                        .single();
-                    if (error) {
-                        setError('Empresa o clave incorrecta.');
+                    // 1. Buscar asignaciones del promotor
+                    const { data: asig, error: asigErr } = await supabase
+                        .from('web_promotor_lineas')
+                        .select('linea_id')
+                        .eq('promoter_id', promoterId);
+
+                    if (asigErr) throw asigErr;
+
+                    let lineasData = [];
+
+                    if (asig && asig.length > 0) {
+                        // Tiene líneas asignadas → cargar solo esas
+                        const ids = asig.map(a => a.linea_id);
+                        const { data, error: linErr } = await supabase
+                            .from('web_lineas')
+                            .select('id, nombre, planogram_image')
+                            .eq('empresa_id', empresa.id)
+                            .eq('activa', true)
+                            .in('id', ids)
+                            .order('nombre');
+                        if (linErr) throw linErr;
+                        lineasData = data || [];
                     } else {
-                        onEmpresaLogin({
-                            id: data.id,
-                            nombre: data.nombre,
-                            gramajeBase: data.gramaje_base_analisis,
-                            unidadBase: data.unidad_base_analisis,
-                            planogramImage: data.planogram_image
-                        });
+                        // Sin asignaciones → ve todas las líneas de la empresa
+                        const { data, error: linErr } = await supabase
+                            .from('web_lineas')
+                            .select('id, nombre, planogram_image')
+                            .eq('empresa_id', empresa.id)
+                            .eq('activa', true)
+                            .order('nombre');
+                        if (linErr) throw linErr;
+                        lineasData = data || [];
                     }
-                } catch (e) {
-                    setError('Error al iniciar sesión. Verifica tu conexión.');
+
+                    setLineas(lineasData);
+
+                    // Si solo hay 1 línea → saltar automáticamente
+                    if (lineasData.length === 1) {
+                        onSelectLinea(lineasData[0]);
+                    }
+                } catch (err) {
+                    console.error('Error cargando líneas:', err);
+                    setError('Error al cargar líneas de producto. Verifica tu conexión.');
                 } finally {
                     setLoading(false);
                 }
             };
+            fetchLineas();
+        }, [promoterId, empresa.id]);
 
-            return (
-                <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
-                    <div className="w-full max-w-md bg-white card p-8">
-                        <h1 className="text-2xl font-extrabold text-center text-indigo-700 mb-2">
-                            📊 Sistema de Captura
-                        </h1>
-                        <p className="text-center text-gray-600 mb-6 text-sm">
-                            Acceso exclusivo para empresas registradas.
-                        </p>
-                        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                            <div>
-                                <label className="block text-gray-700 text-sm font-semibold mb-1">
-                                    Empresa
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Nombre de la empresa"
-                                    value={empresaNombre}
-                                    onChange={(e) => setEmpresaNombre(e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-gray-700 text-sm font-semibold mb-1">
-                                    Clave de Acceso
-                                </label>
-                                <input
-                                    type="password"
-                                    placeholder="Ingresa tu clave"
-                                    value={claveAcceso}
-                                    onChange={(e) => setClaveAcceso(e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                                    required
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full btn-primary text-white font-semibold py-3 rounded-xl shadow-md flex items-center justify-center gap-2 disabled:bg-indigo-300"
-                            >
-                                {loading ? 'Verificando...' : 'Acceder'}
-                            </button>
-                        </form>
-                        {error && (
-                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mt-4 rounded-lg text-sm">
-                                {error}
-                            </div>
-                        )}
-                        <div className="text-center text-gray-500 text-xs mt-6">
-                            Versión 2.1 • Sistema por Empresa
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
+                <div className="w-full max-w-lg bg-white card p-8">
+
+                    {/* Header */}
+                    <div className="flex justify-between items-start mb-6">
+                        <div>
+                            <h1 className="text-xl font-extrabold text-indigo-700">Hola, {promoterName} 👋</h1>
+                            <p className="text-gray-500 text-sm mt-1">{empresa.nombre}</p>
                         </div>
+                        <button onClick={onLogout}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 px-3 py-1.5 rounded-lg">
+                            Cerrar sesión
+                        </button>
                     </div>
-                </div>
-            );
-        };
 
-        const PromotorLogin = ({ empresa, onPromotorLogin, onBack }) => {
-            const [promoterId, setPromoterId] = useState('');
-            const [password, setPassword] = useState('');
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState(null);
-
-            const handleLogin = async (e) => {
-                e.preventDefault();
-                setLoading(true);
-                setError(null);
-                try {
-                    const { data: promotorData, error: promotorError } = await supabase
-                        .from('web_promotores')
-                        .select('promoter_id, promoter_name, estado_id, password, zona_id')
-                        .eq('promoter_id', promoterId)
-                        .eq('empresa_id', empresa.id)
-                        .single();
-                    if (promotorError || !promotorData) {
-                        setError('ID de promotor no encontrado.');
-                        setLoading(false);
-                        return;
-                    }
-                    if (promotorData.password !== password) {
-                        setError('Contraseña incorrecta.');
-                        setLoading(false);
-                        return;
-                    }
-                    let estadoNombre = '';
-                    if (promotorData.estado_id) {
-                        const { data: estadoData } = await supabase
-                            .from('web_estados')
-                            .select('nombre')
-                            .eq('id', promotorData.estado_id)
-                            .single();
-                        estadoNombre = estadoData?.nombre || '';
-                    }
-                    let zonaNombre = '';
-                    if (promotorData.zona_id) {
-                        const { data: zonaData } = await supabase
-                            .from('web_zonas')
-                            .select('nombre')
-                            .eq('id', promotorData.zona_id)
-                            .single();
-                        if (zonaData) {
-                            zonaNombre = zonaData.nombre.replace('Zona ', '');
-                        }
-                    } else {
-                        const zonaNumero = promoterId.replace('promotor_', '').replace(/_/g, '-');
-                        const { data: zonaFallback } = await supabase
-                            .from('web_zonas')
-                            .select('nombre')
-                            .ilike('nombre', `%${zonaNumero}%`)
-                            .single();
-                        if (zonaFallback) {
-                            zonaNombre = zonaFallback.nombre.replace('Zona ', '');
-                        }
-                    }
-                    onPromotorLogin(promotorData.promoter_id, promotorData.promoter_name, estadoNombre, zonaNombre);
-                } catch (e) {
-                    console.error('Error de login:', e);
-                    setError('Error al iniciar sesión. Verifica tus credenciales.');
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            return (
-                <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-4">
-                    <div className="w-full max-w-md bg-white card p-8">
-                        <div className="mb-6">
-                            <button
-                                onClick={onBack}
-                                className="flex items-center text-indigo-600 hover:text-indigo-800 mb-4"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="m15 18-6-6 6-6"/>
-                                </svg>
-                                <span className="ml-2">Volver</span>
-                            </button>
-                            <h1 className="text-xl font-bold text-indigo-700 mb-1">Empresa: {empresa.nombre}</h1>
-                            <p className="text-gray-600 text-sm">Ingresa tu ID de promotor y contraseña</p>
-                        </div>
-                        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                            <div>
-                                <label className="block text-gray-700 text-sm font-semibold mb-1">
-                                    ID de Promotor
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Ej: promotor_001"
-                                    value={promoterId}
-                                    onChange={(e) => setPromoterId(e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-gray-700 text-sm font-semibold mb-1">
-                                    Contraseña
-                                </label>
-                                <input
-                                    type="password"
-                                    placeholder="Tu contraseña"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                                    required
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full btn-primary text-white font-semibold py-3 rounded-xl shadow-md flex items-center justify-center gap-2 disabled:bg-indigo-300"
-                            >
-                                {loading ? 'Verificando...' : 'Iniciar Sesión'}
-                            </button>
-                        </form>
-                        {error && (
-                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mt-4 rounded-lg text-sm">
-                                {error}
-                            </div>
-                        )}
-                        <div className="mt-6 text-center text-gray-500 text-xs">
-                            Contacta al administrador si no tienes credenciales
-                        </div>
+                    <div className="mb-6">
+                        <h2 className="text-lg font-bold text-gray-800 mb-1">¿Con qué línea vas a trabajar hoy?</h2>
+                        <p className="text-gray-500 text-sm">Selecciona el producto para esta visita. Puedes cambiar de línea entre visitas.</p>
                     </div>
-                </div>
-            );
-        };
 
-        const TopSellers = ({ empresaId }) => {
-            const [topSellers, setTopSellers] = useState([]);
-            const [loading, setLoading] = useState(true);
+                    {loading && (
+                        <div className="flex flex-col items-center py-12">
+                            <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                            <p className="text-gray-500 text-sm">Cargando líneas...</p>
+                        </div>
+                    )}
 
-            useEffect(() => {
-                const fetchTopSellers = async () => {
-                    setLoading(true);
-                    try {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const startDate = today.toISOString();
-                        const { data, error } = await supabase
-                            .from('web_precios')
-                            .select('promoter_name')
-                            .eq('empresa_id', empresaId)
-                            .gte('created_at', startDate);
-                        if (error) throw error;
-                        const counts = data.reduce((acc, item) => {
-                            acc[item.promoter_name] = (acc[item.promoter_name] || 0) + 1;
-                            return acc;
-                        }, {});
-                        const sorted = Object.entries(counts)
-                            .map(([name, count]) => ({ name, count }))
-                            .sort((a, b) => b.count - a.count)
-                            .slice(0, 5);
-                        setTopSellers(sorted);
-                    } catch (e) {
-                        console.error('Error al cargar top del día:', e);
-                    } finally {
-                        setLoading(false);
-                    }
-                };
-                fetchTopSellers();
-            }, [empresaId]);
+                    {error && (
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded-lg text-sm">{error}</div>
+                    )}
 
-            return (
-                <div className="bg-white card p-5 mb-6 shadow-md">
-                    <h3 className="text-lg font-bold text-indigo-700 mb-4 text-center">🔥 Top 5 del Día</h3>
-                    {loading ? (
-                        <p className="text-gray-500 text-sm text-center">Cargando ranking...</p>
-                    ) : topSellers.length > 0 ? (
-                        <ol className="space-y-3">
-                            {topSellers.map((seller, index) => {
-                                const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`;
+                    {!loading && !error && lineas.length === 0 && (
+                        <div className="text-center py-10">
+                            <div className="text-5xl mb-3">📭</div>
+                            <p className="text-gray-600 font-medium">No tienes líneas asignadas.</p>
+                            <p className="text-gray-400 text-sm mt-1">Contacta al administrador para que te asigne líneas de producto.</p>
+                        </div>
+                    )}
+
+                    {!loading && lineas.length > 1 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {lineas.map((linea, idx) => {
+                                const style = CARD_STYLES[idx % CARD_STYLES.length];
                                 return (
-                                    <li key={seller.name} className="flex justify-between items-center px-4 py-2 bg-gray-50 rounded-lg">
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-bold text-lg">{medal}</span>
-                                            <span className="font-medium">{seller.name}</span>
+                                    <button
+                                        key={linea.id}
+                                        onClick={() => onSelectLinea(linea)}
+                                        className={`linea-card ${style.bg} border-2 ${style.border} p-5 text-left flex flex-col gap-3`}
+                                    >
+                                        <div className="text-4xl">{getEmoji(linea.nombre)}</div>
+                                        <div>
+                                            <p className={`font-extrabold text-lg ${style.title}`}>{linea.nombre}</p>
+                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${style.badge} mt-1 inline-block`}>
+                                                Iniciar visita →
+                                            </span>
                                         </div>
-                                        <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold">
-                                            {seller.count} visita(s)
-                                        </span>
-                                    </li>
+                                    </button>
                                 );
                             })}
-                        </ol>
-                    ) : (
-                        <p className="text-gray-500 text-sm text-center">No hay visitas hoy.</p>
-                    )}
-                </div>
-            );
-        };
-
-        const UserRank = ({ promoterName, empresaId }) => {
-            const [rank, setRank] = useState(null);
-            const [total, setTotal] = useState(0);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                const fetchUserRank = async () => {
-                    setLoading(true);
-                    try {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const startDate = today.toISOString();
-                        const { data, error } = await supabase
-                            .from('web_precios')
-                            .select('promoter_name')
-                            .eq('empresa_id', empresaId)
-                            .gte('created_at', startDate);
-                        if (error) throw error;
-                        const counts = data.reduce((acc, item) => {
-                            acc[item.promoter_name] = (acc[item.promoter_name] || 0) + 1;
-                            return acc;
-                        }, {});
-                        const sortedNames = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-                        const userIndex = sortedNames.indexOf(promoterName);
-                        const userRank = userIndex !== -1 ? userIndex + 1 : null;
-                        setRank(userRank);
-                        setTotal(sortedNames.length);
-                    } catch (e) {
-                        console.error('Error al cargar tu posición:', e);
-                    } finally {
-                        setLoading(false);
-                    }
-                };
-                fetchUserRank();
-            }, [promoterName, empresaId]);
-
-            return (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-6 border border-blue-100">
-                    <h3 className="text-sm font-bold text-blue-700 mb-2">📊 Tu Posición Nacional</h3>
-                    {loading ? (
-                        <p className="text-gray-500 text-sm">Cargando tu ranking...</p>
-                    ) : rank ? (
-                        <p className="text-gray-700 text-sm">
-                            Hoy estás en el puesto <span className="font-bold text-blue-600">#{rank}</span> de <strong>{total}</strong> promotores.
-                            {rank === 1 && " 🏆 ¡Eres el líder del día!"}
-                        </p>
-                    ) : (
-                        <p className="text-gray-500 text-sm">
-                            Aún no tienes visitas hoy. ¡Haz tu primera captura para entrar al ranking!
-                        </p>
-                    )}
-                </div>
-            );
-        };
-
-        const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, isMyItem, onToggleOutOfStock, isOutOfStock }) => {
-            const handleChange = (e) => {
-                const { name, value } = e.target;
-                onChange({ target: { value } }, type, item.id, name);
-                if (errors[item.id]) {
-                    setErrors(prev => {
-                        const newErr = { ...prev };
-                        delete newErr[item.id];
-                        return newErr;
-                    });
-                }
-            };
-
-            const isNoStockPresentation = item.presentation === 'SIN STOCK';
-            const disableFields = isNoStockPresentation;
-
-            return (
-                <div className="flex flex-col sm:flex-row flex-wrap gap-2 mb-2 p-2 bg-gray-50 rounded-lg card">
-                    <select
-                        value={item.presentation}
-                        onChange={(e) => onChange(e, type, item.id, 'presentation')}
-                        className="w-full sm:w-40 p-3 border border-gray-300 rounded-xl input-focus"
-                        required
-                    >
-                        <option value="">-- Presentación --</option>
-                        {presentations.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-
-                    <input
-                        type="number"
-                        name="price"
-                        placeholder="Precio por Unidad"
-                        value={item.price}
-                        onChange={handleChange}
-                        disabled={disableFields}
-                        className={`w-full sm:w-32 p-3 border rounded-xl input-focus ${errors[item.id] ? 'border-red-500' : 'border-gray-300'} ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-                        required={!disableFields}
-                    />
-
-                    <select
-                        value={item.currency}
-                        onChange={(e) => onChange(e, type, item.id, 'currency')}
-                        disabled={disableFields}
-                        className={`w-full sm:w-28 p-3 border border-gray-300 rounded-xl input-focus ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-                        required={!disableFields}
-                    >
-                        <option value="">-- Moneda --</option>
-                        {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-
-                    {type === 'myitems' && (
-                        <>
-                            <input
-                                type="number"
-                                name="stock_shelf"
-                                placeholder="Stock Anaquel"
-                                value={item.stock_shelf ?? ''}
-                                onChange={handleChange}
-                                disabled={isOutOfStock || disableFields}
-                                className={`w-full sm:w-20 p-3 border rounded-xl input-focus ${(isOutOfStock || disableFields) ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-                                required={!isOutOfStock && !disableFields}
-                            />
-                            <input
-                                type="number"
-                                name="stock_warehouse"
-                                placeholder="Stock Bodega"
-                                value={item.stock_warehouse ?? ''}
-                                onChange={handleChange}
-                                disabled={isOutOfStock || disableFields}
-                                className={`w-full sm:w-20 p-3 border rounded-xl input-focus ${(isOutOfStock || disableFields) ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-                                required={!isOutOfStock && !disableFields}
-                            />
-                            <input
-                                type="number"
-                                name="faces_before"
-                                placeholder="Caras antes"
-                                value={item.faces_before ?? ''}
-                                onChange={handleChange}
-                                disabled={disableFields || isOutOfStock}
-                                className={`w-full sm:w-24 p-3 border rounded-xl input-focus text-center ${(disableFields || isOutOfStock) ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-                            />
-                            <input
-                                type="number"
-                                name="faces_after"
-                                placeholder="Caras después"
-                                value={item.faces_after ?? ''}
-                                onChange={handleChange}
-                                disabled={disableFields}
-                                className={`w-full sm:w-24 p-3 border rounded-xl input-focus text-center ${disableFields ? 'bg-gray-200 cursor-not-allowed' : ''}`}
-                                required={!disableFields}
-                            />
-                            <div className="flex items-center justify-center sm:w-28 pt-2 sm:pt-0">
-                                <label className="flex items-center text-sm text-gray-700 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={isOutOfStock}
-                                        onChange={() => onToggleOutOfStock(item.id)}
-                                        disabled={disableFields}
-                                        className={`mr-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded ${disableFields ? 'cursor-not-allowed' : ''}`}
-                                    />
-                                    SIN STOCK
-                                </label>
-                            </div>
-                        </>
+                        </div>
                     )}
 
-                    {canRemove && (
-                        <button
-                            type="button"
-                            onClick={() => onRemove(type, item.id)}
-                            className="btn-icon text-red-600 hover:text-red-800 p-2 rounded-full transition-transform duration-200 self-center"
-                            aria-label="Eliminar"
-                        >
-                            <Minus size={24} />
-                        </button>
-                    )}
-
-                    {errors[item.id] && (
-                        <div className="error-text w-full">{errors[item.id]}</div>
-                    )}
-                </div>
-            );
-        };
-
-        const ClienteAutocomplete = ({ value, onChange, empresaId }) => {
-            const [isOpen, setIsOpen] = useState(false);
-            const [searchTerm, setSearchTerm] = useState('');
-            const [clientes, setClientes] = useState([]);
-            const [loading, setLoading] = useState(false);
-            const wrapperRef = useRef(null);
-            const debounceTimer = useRef(null);
-
-            const buscarClientes = async (term = '') => {
-                setLoading(true);
-                try {
-                    const { data, error } = await supabase
-                        .from('web_clientes')
-                        .select('trade_name')
-                        .eq('empresa_id', empresaId)
-                        .ilike('trade_name', `%${term}%`)
-                        .limit(20);
-                    if (error) throw error;
-                    setClientes(data || []);
-                } catch (e) {
-                    console.error('Error al buscar clientes:', e);
-                    setClientes([]);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            useEffect(() => {
-                function handleClickOutside(event) {
-                    if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                        setIsOpen(false);
-                    }
-                }
-                document.addEventListener("mousedown", handleClickOutside);
-                return () => document.removeEventListener("mousedown", handleClickOutside);
-            }, []);
-
-            useEffect(() => {
-                if (debounceTimer.current) clearTimeout(debounceTimer.current);
-                debounceTimer.current = setTimeout(() => {
-                    buscarClientes(searchTerm);
-                }, 300);
-                return () => {
-                    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-                };
-            }, [searchTerm, empresaId]);
-
-            const handleFocus = () => {
-                setIsOpen(true);
-                if (!searchTerm && value) setSearchTerm(value);
-                if (!searchTerm) buscarClientes('');
-            };
-
-            const handleChange = (e) => {
-                const term = e.target.value;
-                setSearchTerm(term);
-                onChange(term);
-                setIsOpen(true);
-            };
-
-            const handleSelect = (clienteName) => {
-                onChange(clienteName);
-                setSearchTerm(clienteName);
-                setIsOpen(false);
-            };
-
-            return (
-                <div className="relative" ref={wrapperRef}>
-                    <input
-                        type="text"
-                        placeholder="Nombre del comercio"
-                        value={searchTerm}
-                        onChange={handleChange}
-                        onFocus={handleFocus}
-                        className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                        required
-                    />
-                    {isOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg dropdown-menu">
-                            {loading ? (
-                                <div className="p-3 text-gray-500 text-sm">Buscando comercios...</div>
-                            ) : clientes.length > 0 ? (
-                                clientes.map((cliente, index) => (
-                                    <div
-                                        key={index}
-                                        className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                        onClick={() => handleSelect(cliente.trade_name)}
-                                    >
-                                        {cliente.trade_name}
-                                    </div>
-                                ))
-                            ) : (
-                                searchTerm ? (
-                                    <div className="p-3 text-gray-500 text-sm">
-                                        No se encontraron comercios que contengan "{searchTerm}"
-                                    </div>
-                                ) : (
-                                    <div className="p-3 text-gray-500 text-sm">Escribe para buscar comercios</div>
-                                )
-                            )}
+                    {!loading && lineas.length === 1 && (
+                        <div className="text-center py-6">
+                            <div className="text-5xl mb-2">{getEmoji(lineas[0]?.nombre)}</div>
+                            <p className="text-gray-600 text-sm">Cargando <strong>{lineas[0]?.nombre}</strong>...</p>
                         </div>
                     )}
                 </div>
-            );
-        };
-
-        const PhotoCapture = ({ onPhotoTaken, onRemovePhoto, label, photos }) => {
-            const cameraInputRef = useRef(null);
-            const galleryInputRef = useRef(null);
-
-            const handleFileChange = (e) => {
-                const files = Array.from(e.target.files || []);
-                files.forEach(file => {
-                    if (!file.type.startsWith('image/')) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        onPhotoTaken(ev.target.result);
-                    };
-                    reader.readAsDataURL(file);
-                });
-                e.target.value = ''; // reset para poder seleccionar la misma foto otra vez
-            };
-
-            return (
-                <div className="mb-6">
-                    <h3 className="text-gray-700 font-bold text-base mb-3">{label}</h3>
-                    <p className="text-gray-600 text-sm mb-4">
-                        {label.includes("Antes") 
-                            ? "Mínimo 1 foto del anaquel antes de intervenir"
-                            : "Mínimo 1 foto del anaquel después de intervenir"}
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        {/* Botón Cámara */}
-                        <label className="flex flex-col items-center justify-center p-5 bg-indigo-50 border-2 border-indigo-200 rounded-xl cursor-pointer hover:bg-indigo-100 active:bg-indigo-200 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-indigo-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span className="text-indigo-700 font-semibold">Tomar foto</span>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                multiple
-                                onChange={handleFileChange}
-                                ref={cameraInputRef}
-                                className="hidden"
-                            />
-                        </label>
-
-                        {/* Botón Galería */}
-                        <label className="flex flex-col items-center justify-center p-5 bg-purple-50 border-2 border-purple-200 rounded-xl cursor-pointer hover:bg-purple-100 active:bg-purple-200 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-purple-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-purple-700 font-semibold">Desde galería</span>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={handleFileChange}
-                                ref={galleryInputRef}
-                                className="hidden"
-                            />
-                        </label>
-                    </div>
-
-                    {photos.length > 0 && (
-                        <div>
-                            <p className="text-sm text-gray-600 mb-3">
-                                {photos.length} foto{photos.length !== 1 ? 's' : ''} seleccionada{photos.length !== 1 ? 's' : ''}
-                            </p>
-                            <div className="flex flex-wrap gap-3">
-                                {photos.map((photo, index) => (
-                                    <div key={index} className="relative">
-                                        <img 
-                                            src={photo} 
-                                            alt={`Foto ${index + 1}`} 
-                                            className="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow-sm"
-                                        />
-                                        <button
-                                            onClick={() => onRemovePhoto(index)}
-                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-md hover:bg-red-600"
-                                        >
-                                            ✕
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        const DataEntryScreen = ({ empresa, promoterName, promoterId, initialState, initialZone, newItem: initialNewItem, setNewItem: initialSetNewItem, error, setError, successMessage, setSuccessMessage, loading, setLoading, onLogout }) => {
-            const [presentationsCompetidor, setPresentationsCompetidor] = useState([]);
-            const [presentationsMy, setPresentationsMy] = useState([]);
-            const [estados, setEstados] = useState([]);
-            const [zonas, setZonas] = useState([]);
-            const [filteredZonas, setFilteredZonas] = useState([]);
-            const [dataLoading, setDataLoading] = useState(true);
-            const [comments, setComments] = useState('');
-            const [geoError, setGeoError] = useState(null);
-            const [priceErrors, setPriceErrors] = useState({});
-            const [priceWarning, setPriceWarning] = useState('');
-            const [outOfStockItems, setOutOfStockItems] = useState(new Set());
-            const [isMayorista, setIsMayorista] = useState(false);
-            const [isClienteCerrado, setIsClienteCerrado] = useState(false);
-            const [beforePhotos, setBeforePhotos] = useState([]);
-            const [afterPhotos, setAfterPhotos] = useState([]);
-            const [sessionData, setSessionData] = useState(null);
-            const [showPlanogramModal, setShowPlanogramModal] = useState(false);
-            const [visitStarted, setVisitStarted] = useState(false);
-
-            // Estado del formulario
-            const [newItem, setNewItem] = useState(initialNewItem);
-
-            const FORM_STORAGE_KEY = `precio-form-v2-${empresa.id}-${promoterId}`;
-
-            // Cargar formulario guardado
-            useEffect(() => {
-                try {
-                    const saved = localStorage.getItem(FORM_STORAGE_KEY);
-                    if (saved) {
-                        const parsed = JSON.parse(saved);
-                        if (!sessionData) {
-                            setNewItem(parsed.newItem || initialNewItem);
-                            setComments(parsed.comments || '');
-                            setIsMayorista(!!parsed.isMayorista);
-                            setIsClienteCerrado(!!parsed.isClienteCerrado);
-                            setBeforePhotos(parsed.beforePhotos || []);
-                            setAfterPhotos(parsed.afterPhotos || []);
-                            setVisitStarted(!!parsed.visitStarted);
-                        }
-                    }
-                } catch (err) {
-                    console.warn("Error al restaurar formulario", err);
-                }
-            }, [empresa.id, promoterId, sessionData]);
-
-            // Guardar con debounce
-            // ==================== GUARDADO ROBUSTO (NUEVO) ====================
-
-// Referencia para guardar siempre los datos más recientes (evita closures)
-const formDataRef = useRef({});
-
-// Actualizamos la referencia cada vez que cambia algo
-useEffect(() => {
-    formDataRef.current = {
-        newItem,
-        comments,
-        isMayorista,
-        isClienteCerrado,
-        beforePhotos,
-        afterPhotos,
-        visitStarted
+            </div>
+        );
     };
-}, [newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted]);
 
-// Guardado con debounce (el que ya tenías)
-        const saveFormDebounced = useRef(
-            debounce(() => {
-                try {
-                    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formDataRef.current));
-                } catch (err) {
-                    console.warn("Error guardando en localStorage", err);
-                }
-            }, 700)
-        ).current;
+    // ════════════════════════════════════════════════════════════
+    // TopSellers & UserRank (sin cambios)
+    // ════════════════════════════════════════════════════════════
+    const TopSellers = ({ empresaId, lineaId }) => {
+        const [topSellers, setTopSellers] = useState([]);
+        const [loading, setLoading] = useState(true);
 
-        // 🔥 GUARDADO FORZOSO al salir de la app / fondo / cerrar PWA
         useEffect(() => {
-            const saveNow = () => {
-                try {
-                    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formDataRef.current));
-                } catch (err) {
-                    console.warn("Error guardando en localStorage (beforeunload)", err);
-                }
-            };
-
-            const handleBeforeUnload = () => saveNow();
-            const handleVisibilityChange = () => {
-                if (document.visibilityState === 'hidden') saveNow();
-            };
-
-            window.addEventListener('beforeunload', handleBeforeUnload);
-            document.addEventListener('visibilitychange', handleVisibilityChange);
-
-            return () => {
-                window.removeEventListener('beforeunload', handleBeforeUnload);
-                document.removeEventListener('visibilitychange', handleVisibilityChange);
-            };
-        }, []); // solo se monta una vez
-
-        // Guardado normal con debounce (mantienes tu lógica anterior)
-        useEffect(() => {
-            if (promoterId) saveFormDebounced();
-        }, [newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted, promoterId]);
-
-            useEffect(() => {
-                if (promoterId) {
-                    saveFormDebounced();
-                }
-            }, [newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted, promoterId]);
-
-            // Cálculos
-            const ourFacesBeforeSum = useMemo(() => 
-                newItem.myitems
-                    .filter(item => item.presentation !== 'SIN STOCK')
-                    .reduce((sum, item) => sum + (parseInt(item.faces_before) || 0), 0),
-            [newItem.myitems]);
-
-            const ourFacesAfterSum = useMemo(() => 
-                newItem.myitems
-                    .filter(item => item.presentation !== 'SIN STOCK')
-                    .reduce((sum, item) => sum + (parseInt(item.faces_after) || 0), 0),
-            [newItem.myitems]);
-
-            const facesBeforeDifference = newItem.our_faces_before_manual 
-                ? Math.abs(parseInt(newItem.our_faces_before_manual) - ourFacesBeforeSum) 
-                : null;
-
-            // Cargar datos iniciales
-            useEffect(() => {
-                const fetchData = async () => {
-                    setDataLoading(true);
-                    try {
-                        const { data: compData } = await supabase
-                            .from('web_competidor')
-                            .select('presentation')
-                            .eq('empresa_id', empresa.id)
-                            .order('presentation');
-                        const { data: myData } = await supabase
-                            .from('web_myproductos')
-                            .select('presentation')
-                            .eq('empresa_id', empresa.id)
-                            .order('presentation');
-                        const { data: estadosData } = await supabase
-                            .from('web_estados')
-                            .select('id, nombre')
-                            .order('nombre');
-                        const { data: zonasData } = await supabase
-                            .from('web_zonas')
-                            .select('id, nombre, estado_id')
-                            .order('nombre');
-
-                        setPresentationsCompetidor(compData?.map(p => p.presentation) || []);
-                        setPresentationsMy(myData?.map(p => p.presentation) || []);
-                        setEstados(estadosData || []);
-                        setZonas(zonasData || []);
-
-                        if (initialState) setNewItem(prev => ({ ...prev, state: initialState }));
-                        if (initialZone) setNewItem(prev => ({ ...prev, zone: initialZone }));
-                    } catch (e) {
-                        console.error('Error al cargar datos:', e);
-                        setError(`Error al cargar datos: ${e.message}`);
-                    } finally {
-                        setDataLoading(false);
-                    }
-                };
-                fetchData();
-            }, [empresa.id, initialState, initialZone]);
-
-            useEffect(() => {
-                if (newItem.state) {
-                    const estado = estados.find(e => e.nombre === newItem.state);
-                    if (estado) {
-                        const filtered = zonas
-                            .filter(z => z.estado_id === estado.id)
-                            .map(z => z.nombre.replace('Zona ', ''));
-                        setFilteredZonas(filtered);
-                        if (newItem.zone && !filtered.includes(newItem.zone)) {
-                            setNewItem(prev => ({ ...prev, zone: '' }));
-                        }
-                    } else {
-                        setFilteredZonas([]);
-                    }
-                } else {
-                    setFilteredZonas([]);
-                }
-            }, [newItem.state, estados, zonas]);
-
-            // Carga de sesión pendiente (IndexedDB)
-            useEffect(() => {
-                const loadSession = async () => {
-                    const db = await openDB();
-                    const tx = db.transaction('pendientes', 'readonly');
-                    const store = tx.objectStore('pendientes');
-                    const pending = await new Promise((resolve) => {
-                        const req = store.getAll();
-                        req.onsuccess = () => resolve(req.result);
-                    });
-                    const ongoingVisit = pending.find(item => item.promoter_id === promoterId && !item.completed);
-                    if (ongoingVisit) {
-                        setSessionData(ongoingVisit);
-                        setNewItem(ongoingVisit.newItem || newItem);
-                        setBeforePhotos(ongoingVisit.before_photos || []);
-                        setAfterPhotos(ongoingVisit.after_photos || []);
-                        setComments(ongoingVisit.comments || '');
-                        setIsMayorista(ongoingVisit.isMayorista || false);
-                        setIsClienteCerrado(ongoingVisit.isClienteCerrado || false);
-                    }
-                };
-                loadSession();
-            }, [promoterId]);
-
-            // Sync pendientes al reconectar
-            useEffect(() => {
-                const syncPending = async () => {
-                    if (!navigator.onLine) return;
-                    const db = await openDB();
-                    const tx = db.transaction('pendientes', 'readwrite');
-                    const store = tx.objectStore('pendientes');
-                    const pending = await new Promise((resolve) => {
-                        const req = store.getAll();
-                        req.onsuccess = () => resolve(req.result);
-                    });
-                    for (let item of pending) {
-                        try {
-                            const uploadedBefore = [];
-                            for (const photo of item.before_photos || []) {
-                                const file = dataURLtoFile(photo, `before_${crypto.randomUUID()}.jpg`);
-                                const { data, error } = await supabase.storage
-                                    .from('visits_photos')
-                                    .upload(`before/${file.name}`, file);
-                                if (error) throw error;
-                                uploadedBefore.push(file.name);
-                            }
-                            const uploadedAfter = [];
-                            for (const photo of item.after_photos || []) {
-                                const file = dataURLtoFile(photo, `after_${crypto.randomUUID()}.jpg`);
-                                const { data, error } = await supabase.storage
-                                    .from('visits_photos')
-                                    .upload(`after/${file.name}`, file);
-                                if (error) throw error;
-                                uploadedAfter.push(file.name);
-                            }
-                            item.before_photos = uploadedBefore;
-                            item.after_photos = uploadedAfter;
-
-                            const { error: insertError } = await supabase.from('web_precios').insert([item]);
-                            if (insertError) throw insertError;
-
-                            await new Promise((resolve) => {
-                                const delReq = store.delete(item.id);
-                                delReq.onsuccess = resolve;
-                            });
-                            setSuccessMessage('✅ Visitas pendientes sincronizadas.');
-                        } catch (e) {
-                            console.error('Error en sync:', e);
-                        }
-                    }
-                };
-                window.addEventListener('online', syncPending);
-                syncPending();
-                return () => window.removeEventListener('online', syncPending);
-            }, []);
-
-            const dataURLtoFile = (dataurl, filename) => {
-                let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-                    bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-                while (n--) u8arr[n] = bstr.charCodeAt(n);
-                return new File([u8arr], filename, { type: mime });
-            };
-
-            const handleInputChange = (e, type, id, field) => {
-                const { value } = e.target;
-                setNewItem(prev => {
-                    let updatedItems = prev[type].map(item => {
-                        if (item.id === id) {
-                            let updatedItem = { ...item, [field]: value };
-                            if (field === 'presentation' && value === 'SIN STOCK') {
-                                updatedItem.price = '';
-                                updatedItem.currency = '';
-                                if (type === 'myitems') {
-                                    updatedItem.stock_shelf = '';
-                                    updatedItem.stock_warehouse = '';
-                                    updatedItem.faces_before = '';
-                                    updatedItem.faces_after = '';
-                                }
-                            }
-                            return updatedItem;
-                        }
-                        return item;
-                    });
-                    return { ...prev, [type]: updatedItems };
-                });
-                if (field === 'presentation' && value === 'SIN STOCK' && type === 'myitems') {
-                    setOutOfStockItems(prev => new Set([...prev, id]));
-                }
-                if (priceErrors[id]) {
-                    setPriceErrors(prev => {
-                        const newErr = { ...prev };
-                        delete newErr[id];
-                        return newErr;
-                    });
-                    setPriceWarning('');
-                }
-            };
-
-            const handleAddClick = (type) => {
-                setNewItem(prev => ({
-                    ...prev,
-                    [type]: [...prev[type], {
-                        id: crypto.randomUUID(),
-                        presentation: '',
-                        price: '',
-                        currency: '',
-                        stock_shelf: '',
-                        stock_warehouse: '',
-                        faces_before: '',
-                        faces_after: ''
-                    }]
-                }));
-            };
-
-            const handleRemoveClick = (type, id) => {
-                setNewItem(prev => ({
-                    ...prev,
-                    [type]: prev[type].filter(item => item.id !== id)
-                }));
-                if (priceErrors[id]) {
-                    setPriceErrors(prev => {
-                        const newErr = { ...prev };
-                        delete newErr[id];
-                        return newErr;
-                    });
-                    setPriceWarning('');
-                }
-                if (type === 'myitems') {
-                    setOutOfStockItems(prev => {
-                        const newSet = new Set(prev);
-                        newSet.delete(id);
-                        return newSet;
-                    });
-                }
-            };
-
-            const toggleOutOfStock = (id) => {
-                setOutOfStockItems(prev => {
-                    const newSet = new Set(prev);
-                    if (newSet.has(id)) newSet.delete(id);
-                    else newSet.add(id);
-                    return newSet;
-                });
-            };
-
-            const validatePrices = (items, isMayorista) => {
-                let hasError = false;
-                const newErrors = {};
-                items.forEach(item => {
-                    if (item.presentation === 'SIN STOCK') return;
-                    if (!item.price || !item.currency) return;
-                    const price = parseFloat(item.price);
-                    if (isNaN(price)) return;
-                    if (item.currency === 'BS' && (price < 100 || price > 2500)) {
-                        newErrors[item.id] = "El precio en Bs debe estar entre 100 y 2500 Bs.";
-                        hasError = true;
-                    } else if (item.currency === '$') {
-                        if (isMayorista) {
-                            if (price < 0.1 || price > 70) {
-                                newErrors[item.id] = "El precio en $ debe estar entre $0.10 y $70.00 para mayorista.";
-                                hasError = true;
-                            }
-                        } else {
-                            if (price < 0.01 || price > 10) {
-                                newErrors[item.id] = "El precio en $ debe estar entre $0.01 y $10.00.";
-                                hasError = true;
-                            }
-                        }
-                    }
-                });
-                setPriceErrors(newErrors);
-                if (hasError) {
-                    setPriceWarning("❌ Error: Algunos precios están fuera del rango esperado. Corrige los errores antes de guardar.");
-                } else {
-                    setPriceWarning('');
-                }
-                return !hasError;
-            };
-
-            const handleStartVisit = () => {
-                if (beforePhotos.length === 0) {
-                    setError('Debes tomar al menos una foto "Antes" para iniciar la visita.');
-                    return;
-                }
-                setVisitStarted(true);
-            };
-
-            const handleSaveData = async (e) => {
-                e.preventDefault();
+            const fetch = async () => {
                 setLoading(true);
-                setError(null);
-                setSuccessMessage(null);
-                setGeoError(null);
-                setPriceWarning('');
-
-                if (!isClienteCerrado) {
-                    const allItems = [...newItem.competitoritems, ...newItem.myitems];
-                    const arePricesValid = validatePrices(allItems, isMayorista);
-                    if (!arePricesValid) {
-                        setLoading(false);
-                        return;
-                    }
-                }
-
-                if (afterPhotos.length === 0) {
-                    setError('Debes tomar al menos una foto "después" para finalizar la visita.');
-                    setLoading(false);
-                    return;
-                }
-
-                let latitude = null;
-                let longitude = null;
                 try {
-                    const position = await new Promise((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject, {
-                            enableHighAccuracy: true,
-                            timeout: 15000,
-                            maximumAge: 0,
-                        });
-                    });
-                    latitude = position.coords.latitude;
-                    longitude = position.coords.longitude;
-                } catch (geoErr) {
-                    console.warn("Error de geolocalización:", geoErr.message);
-                    setGeoError("No se pudo obtener ubicación. Puedes continuar, pero la visita podría marcarse como no confirmada.");
-                }
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    let q = supabase.from('web_precios').select('promoter_name')
+                        .eq('empresa_id', empresaId).gte('created_at', today.toISOString());
+                    if (lineaId) q = q.eq('linea_id', lineaId);
+                    const { data, error } = await q;
+                    if (error) throw error;
+                    const counts = data.reduce((acc, i) => { acc[i.promoter_name] = (acc[i.promoter_name]||0)+1; return acc; }, {});
+                    setTopSellers(Object.entries(counts).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count).slice(0,5));
+                } catch(e) { console.error(e); }
+                finally { setLoading(false); }
+            };
+            fetch();
+        }, [empresaId, lineaId]);
 
+        return (
+            <div className="bg-white card p-5 mb-6 shadow-md">
+                <h3 className="text-lg font-bold text-indigo-700 mb-4 text-center">🔥 Top 5 del Día</h3>
+                {loading ? <p className="text-gray-500 text-sm text-center">Cargando ranking...</p>
+                : topSellers.length > 0 ? (
+                    <ol className="space-y-3">
+                        {topSellers.map((s, i) => {
+                            const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
+                            return (
+                                <li key={s.name} className="flex justify-between items-center px-4 py-2 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-bold text-lg">{medal}</span>
+                                        <span className="font-medium">{s.name}</span>
+                                    </div>
+                                    <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold">{s.count} visita(s)</span>
+                                </li>
+                            );
+                        })}
+                    </ol>
+                ) : <p className="text-gray-500 text-sm text-center">No hay visitas hoy.</p>}
+            </div>
+        );
+    };
+
+    const UserRank = ({ promoterName, empresaId, lineaId }) => {
+        const [rank, setRank]   = useState(null);
+        const [total, setTotal] = useState(0);
+        const [loading, setLoading] = useState(true);
+
+        useEffect(() => {
+            const fetch = async () => {
+                setLoading(true);
                 try {
-                    let errMsg = [];
-                    if (!newItem.state) errMsg.push("Estado");
-                    if (!newItem.zone) errMsg.push("Zona");
-                    if (!newItem.trade) {
-                        errMsg.push("Comercio (selecciona de la lista)");
-                    } else {
-                        const { data: clienteData } = await supabase
-                            .from('web_clientes')
-                            .select('trade_name')
-                            .eq('trade_name', newItem.trade)
-                            .eq('empresa_id', empresa.id)
-                            .single();
-                        const isValidTrade = clienteData?.trade_name === newItem.trade;
-                        if (!isValidTrade) {
-                            errMsg.push("Comercio (debes seleccionar un comercio válido de la lista)");
-                        }
-                    }
-                    if (errMsg.length > 0) {
-                        setError(`Completa: ${errMsg.join(", ")}.`);
-                        setLoading(false);
-                        return;
-                    }
-
-                    let validCompetitorItems = [];
-                    let validMyItems = [];
-                    if (!isClienteCerrado) {
-                        validCompetitorItems = newItem.competitoritems.filter(item =>
-                            item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
-                        );
-                        validMyItems = newItem.myitems.filter(item =>
-                            item.presentation && (item.presentation === 'SIN STOCK' || (item.price && item.currency))
-                        );
-                        if (validCompetitorItems.length === 0 && validMyItems.length === 0) {
-                            setError("Agrega al menos un ítem completo.");
-                            setLoading(false);
-                            return;
-                        }
-                    }
-
-                    if (isClienteCerrado && !comments.trim()) {
-                        setError("Para cliente cerrado, ingresa un comentario.");
-                        setLoading(false);
-                        return;
-                    }
-
-                    const uploadedBefore = [];
-                    for (const photoDataUrl of beforePhotos) {
-                        const fileName = `before_${crypto.randomUUID()}.jpg`;
-                        const file = dataURLtoFile(photoDataUrl, fileName);
-                        const { data, error: uploadError } = await supabase.storage
-                            .from('visits_photos')
-                            .upload(`before/${fileName}`, file, { cacheControl: '3600', upsert: false });
-                        if (uploadError) throw new Error(`Fallo al subir foto antes: ${uploadError.message}`);
-                        uploadedBefore.push(fileName);
-                    }
-
-                    const uploadedAfter = [];
-                    for (const photoDataUrl of afterPhotos) {
-                        const fileName = `after_${crypto.randomUUID()}.jpg`;
-                        const file = dataURLtoFile(photoDataUrl, fileName);
-                        const { data, error: uploadError } = await supabase.storage
-                            .from('visits_photos')
-                            .upload(`after/${fileName}`, file, { cacheControl: '3600', upsert: false });
-                        if (uploadError) throw new Error(`Fallo al subir foto después: ${uploadError.message}`);
-                        uploadedAfter.push(fileName);
-                    }
-
-                    const visitData = {
-                        empresa_id: empresa.id,
-                        promoter_id: promoterId,
-                        promoter_name: promoterName,
-                        state: newItem.state,
-                        zone: newItem.zone,
-                        trade: newItem.trade,
-                        competitoritems: validCompetitorItems.map(item => ({
-                            presentation: item.presentation,
-                            price: item.presentation === 'SIN STOCK' ? null : parseFloat(item.price),
-                            currency: item.presentation === 'SIN STOCK' ? null : item.currency
-                        })),
-                        myitems: validMyItems.map(item => ({
-                            presentation: item.presentation,
-                            price: item.presentation === 'SIN STOCK' ? null : parseFloat(item.price),
-                            currency: item.presentation === 'SIN STOCK' ? null : item.currency,
-                            stock_shelf: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_shelf !== '' ? parseFloat(item.stock_shelf) : null)),
-                            stock_warehouse: item.presentation === 'SIN STOCK' ? null : (outOfStockItems.has(item.id) ? null : (item.stock_warehouse !== '' ? parseFloat(item.stock_warehouse) : null)),
-                            faces_before: item.presentation === 'SIN STOCK' ? null : (item.faces_before !== '' ? parseInt(item.faces_before) : null),
-                            faces_after: item.presentation === 'SIN STOCK' ? null : (item.faces_after !== '' ? parseInt(item.faces_after) : null)
-                        })),
-                        latitude,
-                        longitude,
-                        comments: comments.trim() || null,
-                        p_mayorista: isMayorista ? 'Si' : 'No',
-                        cliente_cerrado: isClienteCerrado ? 'Si' : 'No',
-                        before_photos: uploadedBefore,
-                        after_photos: uploadedAfter,
-                        total_faces_before: newItem.totalFacesBefore ? parseInt(newItem.totalFacesBefore) : null,
-                        our_faces_before_manual: newItem.our_faces_before_manual ? parseInt(newItem.our_faces_before_manual) : null,
-                        our_faces_before_counted: ourFacesBeforeSum || null,
-                        total_faces: newItem.totalFaces ? parseInt(newItem.totalFaces) : null,
-                        our_faces_after: ourFacesAfterSum || null
-                    };
-
-                    if (navigator.onLine) {
-                        const { error: insertError } = await supabase.from('web_precios').insert([visitData]);
-                        if (insertError) throw insertError;
-                        setSuccessMessage("✅ Datos, ubicación, comentarios y fotos guardados con éxito.");
-                        resetForm();
-                    } else {
-                        visitData.id = crypto.randomUUID();
-                        const db = await openDB();
-                        const tx = db.transaction('pendientes', 'readwrite');
-                        const store = tx.objectStore('pendientes');
-                        await store.add(visitData);
-                        setSuccessMessage("✅ Guardado offline. Se sincronizará al conectar.");
-                        resetForm();
-                    }
-                } catch (err) {
-                    console.error("Error completo al guardar:", err);
-                    setError(`Error al guardar: ${err.message}`);
-                } finally {
-                    setLoading(false);
-                }
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    let q = supabase.from('web_precios').select('promoter_name')
+                        .eq('empresa_id', empresaId).gte('created_at', today.toISOString());
+                    if (lineaId) q = q.eq('linea_id', lineaId);
+                    const { data, error } = await q;
+                    if (error) throw error;
+                    const counts = data.reduce((acc, i) => { acc[i.promoter_name]=(acc[i.promoter_name]||0)+1; return acc; }, {});
+                    const sorted = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+                    const idx = sorted.indexOf(promoterName);
+                    setRank(idx !== -1 ? idx+1 : null);
+                    setTotal(sorted.length);
+                } catch(e) { console.error(e); }
+                finally { setLoading(false); }
             };
+            fetch();
+        }, [promoterName, empresaId, lineaId]);
 
-            const resetForm = () => {
-                setComments('');
-                setIsMayorista(false);
-                setIsClienteCerrado(false);
-                setNewItem({
-                    state: initialState || '',
-                    zone: '',
-                    trade: '',
-                    competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
-                    totalFacesBefore: '',
-                    our_faces_before_manual: '',
-                    totalFaces: ''
-                });
-                setOutOfStockItems(new Set());
-                setBeforePhotos([]);
-                setAfterPhotos([]);
-                localStorage.removeItem(FORM_STORAGE_KEY);
-                if (navigator.onLine) {
-                    (async () => {
-                        const db = await openDB();
-                        const tx = db.transaction('pendientes', 'readwrite');
-                        const store = tx.objectStore('pendientes');
-                        await store.clear();
-                    })();
-                }
-                setVisitStarted(false);
-            };
+        return (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-6 border border-blue-100">
+                <h3 className="text-sm font-bold text-blue-700 mb-2">📊 Tu Posición Nacional</h3>
+                {loading ? <p className="text-gray-500 text-sm">Cargando tu ranking...</p>
+                : rank ? (
+                    <p className="text-gray-700 text-sm">
+                        Hoy estás en el puesto <span className="font-bold text-blue-600">#{rank}</span> de <strong>{total}</strong> promotores.
+                        {rank===1 && " 🏆 ¡Eres el líder del día!"}
+                    </p>
+                ) : <p className="text-gray-500 text-sm">Aún no tienes visitas hoy. ¡Haz tu primera captura para entrar al ranking!</p>}
+            </div>
+        );
+    };
 
-            return (
-                <div className="min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-2 sm:p-4 flex flex-col items-center relative">
-                    <div className="mb-4 flex justify-between items-center">
-    <button
-        onClick={onLogout}
-        className="text-sm text-red-600 hover:text-red-800 font-medium"
-    >
-        ← Cerrar Sesión
-    </button>
+    // ════════════════════════════════════════════════════════════
+    // ItemRow (sin cambios)
+    // ════════════════════════════════════════════════════════════
+    const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, onToggleOutOfStock, isOutOfStock }) => {
+        const handleChange = (e) => {
+            const { name, value } = e.target;
+            onChange({ target: { value } }, type, item.id, name);
+            if (errors[item.id]) setErrors(prev => { const n={...prev}; delete n[item.id]; return n; });
+        };
+        const disabled = item.presentation === 'SIN STOCK';
 
-    {/* NUEVO BOTÓN LIMPIAR */}
-    <button
-        onClick={() => {
-            if (!window.confirm("¿Estás seguro? Esto borrará TODOS los datos de la visita actual (fotos, precios, comentarios, etc.) y no se puede recuperar.")) {
-                return;
-            }
-            localStorage.removeItem(FORM_STORAGE_KEY);
-            resetForm();           // Ya tienes esta función, úsala
-            setSuccessMessage("✅ Formulario limpiado. Puedes empezar una nueva visita.");
-        }}
-        className="text-sm px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg font-medium flex items-center gap-1.5 shadow-sm"
-        title="Descartar todo y empezar de cero"
-    >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18" />
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-            <line x1="10" y1="11" x2="10" y2="17" />
-            <line x1="14" y1="11" x2="14" y2="17" />
-        </svg>
-        Limpiar todo
-    </button>
-</div>
-                    <div className="container w-full max-w-4xl bg-white card p-4 sm:p-6">
-                        <div className="mb-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs text-gray-500">{empresa.nombre}</span>
+        return (
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 mb-2 p-2 bg-gray-50 rounded-lg card">
+                <select value={item.presentation} onChange={e => onChange(e, type, item.id, 'presentation')}
+                    className="w-full sm:w-40 p-3 border border-gray-300 rounded-xl input-focus" required>
+                    <option value="">-- Presentación --</option>
+                    {presentations.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <input type="number" name="price" placeholder="Precio por Unidad" value={item.price}
+                    onChange={handleChange} disabled={disabled}
+                    className={`w-full sm:w-32 p-3 border rounded-xl input-focus ${errors[item.id]?'border-red-500':'border-gray-300'} ${disabled?'bg-gray-200 cursor-not-allowed':''}`}
+                    required={!disabled} />
+                <select value={item.currency} onChange={e => onChange(e, type, item.id, 'currency')}
+                    disabled={disabled}
+                    className={`w-full sm:w-28 p-3 border border-gray-300 rounded-xl input-focus ${disabled?'bg-gray-200 cursor-not-allowed':''}`}
+                    required={!disabled}>
+                    <option value="">-- Moneda --</option>
+                    {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {type === 'myitems' && (
+                    <>
+                        <input type="number" name="stock_shelf" placeholder="Stock Anaquel" value={item.stock_shelf??''}
+                            onChange={handleChange} disabled={isOutOfStock||disabled}
+                            className={`w-full sm:w-20 p-3 border rounded-xl input-focus ${(isOutOfStock||disabled)?'bg-gray-200 cursor-not-allowed':''}`}
+                            required={!isOutOfStock&&!disabled} />
+                        <input type="number" name="stock_warehouse" placeholder="Stock Bodega" value={item.stock_warehouse??''}
+                            onChange={handleChange} disabled={isOutOfStock||disabled}
+                            className={`w-full sm:w-20 p-3 border rounded-xl input-focus ${(isOutOfStock||disabled)?'bg-gray-200 cursor-not-allowed':''}`}
+                            required={!isOutOfStock&&!disabled} />
+                        <input type="number" name="faces_before" placeholder="Caras antes" value={item.faces_before??''}
+                            onChange={handleChange} disabled={disabled||isOutOfStock}
+                            className={`w-full sm:w-24 p-3 border rounded-xl input-focus text-center ${(disabled||isOutOfStock)?'bg-gray-200 cursor-not-allowed':''}`} />
+                        <input type="number" name="faces_after" placeholder="Caras después" value={item.faces_after??''}
+                            onChange={handleChange} disabled={disabled}
+                            className={`w-full sm:w-24 p-3 border rounded-xl input-focus text-center ${disabled?'bg-gray-200 cursor-not-allowed':''}`}
+                            required={!disabled} />
+                        <div className="flex items-center justify-center sm:w-28 pt-2 sm:pt-0">
+                            <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+                                <input type="checkbox" checked={isOutOfStock} onChange={() => onToggleOutOfStock(item.id)}
+                                    disabled={disabled} className="mr-1 h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                                SIN STOCK
+                            </label>
+                        </div>
+                    </>
+                )}
+                {canRemove && (
+                    <button type="button" onClick={() => onRemove(type, item.id)}
+                        className="btn-icon text-red-600 hover:text-red-800 p-2 rounded-full self-center">
+                        <Minus size={24} />
+                    </button>
+                )}
+                {errors[item.id] && <div className="error-text w-full">{errors[item.id]}</div>}
+            </div>
+        );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // ClienteAutocomplete (sin cambios)
+    // ════════════════════════════════════════════════════════════
+    const ClienteAutocomplete = ({ value, onChange, empresaId }) => {
+        const [isOpen, setIsOpen]       = useState(false);
+        const [searchTerm, setSearchTerm] = useState('');
+        const [clientes, setClientes]   = useState([]);
+        const [loading, setLoading]     = useState(false);
+        const wrapperRef    = useRef(null);
+        const debounceTimer = useRef(null);
+
+        const buscar = async (term='') => {
+            setLoading(true);
+            try {
+                const { data } = await supabase.from('web_clientes').select('trade_name')
+                    .eq('empresa_id', empresaId).ilike('trade_name', `%${term}%`).limit(20);
+                setClientes(data||[]);
+            } catch { setClientes([]); }
+            finally { setLoading(false); }
+        };
+
+        useEffect(() => {
+            const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setIsOpen(false); };
+            document.addEventListener('mousedown', handler);
+            return () => document.removeEventListener('mousedown', handler);
+        }, []);
+
+        useEffect(() => {
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
+            debounceTimer.current = setTimeout(() => buscar(searchTerm), 300);
+            return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
+        }, [searchTerm, empresaId]);
+
+        return (
+            <div className="relative" ref={wrapperRef}>
+                <input type="text" placeholder="Nombre del comercio" value={searchTerm}
+                    onChange={e => { setSearchTerm(e.target.value); onChange(e.target.value); setIsOpen(true); }}
+                    onFocus={() => { setIsOpen(true); if (!searchTerm) buscar(''); }}
+                    className="w-full p-3 border border-gray-300 rounded-xl input-focus" required />
+                {isOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg dropdown-menu">
+                        {loading ? <div className="p-3 text-gray-500 text-sm">Buscando...</div>
+                        : clientes.length > 0 ? clientes.map((c,i) => (
+                            <div key={i} className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                onClick={() => { onChange(c.trade_name); setSearchTerm(c.trade_name); setIsOpen(false); }}>
+                                {c.trade_name}
                             </div>
-                            <h1 className="text-xl sm:text-2xl font-extrabold text-center text-indigo-700 mb-2">
-                                Ingreso de Precios
-                            </h1>
-                            <p className="text-center text-gray-600 text-sm">
-                                Usuario: <span className="font-semibold text-indigo-600">{promoterName}</span>
-                            </p>
+                        )) : <div className="p-3 text-gray-500 text-sm">{searchTerm ? `Sin resultados para "${searchTerm}"` : 'Escribe para buscar'}</div>}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // PhotoCapture (sin cambios)
+    // ════════════════════════════════════════════════════════════
+    const PhotoCapture = ({ onPhotoTaken, onRemovePhoto, label, photos }) => {
+        const handleFileChange = (e) => {
+            Array.from(e.target.files||[]).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = ev => onPhotoTaken(ev.target.result);
+                reader.readAsDataURL(file);
+            });
+            e.target.value = '';
+        };
+
+        return (
+            <div className="mb-6">
+                <h3 className="text-gray-700 font-bold text-base mb-3">{label}</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                    {label.includes("Antes") ? "Mínimo 1 foto del anaquel antes de intervenir" : "Mínimo 1 foto del anaquel después de intervenir"}
+                </p>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    <label className="flex flex-col items-center justify-center p-5 bg-indigo-50 border-2 border-indigo-200 rounded-xl cursor-pointer hover:bg-indigo-100 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-indigo-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-indigo-700 font-semibold">Tomar foto</span>
+                        <input type="file" accept="image/*" capture="environment" multiple onChange={handleFileChange} className="hidden" />
+                    </label>
+                    <label className="flex flex-col items-center justify-center p-5 bg-purple-50 border-2 border-purple-200 rounded-xl cursor-pointer hover:bg-purple-100 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-purple-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-purple-700 font-semibold">Desde galería</span>
+                        <input type="file" accept="image/*" multiple onChange={handleFileChange} className="hidden" />
+                    </label>
+                </div>
+                {photos.length > 0 && (
+                    <div>
+                        <p className="text-sm text-gray-600 mb-3">{photos.length} foto{photos.length!==1?'s':''} seleccionada{photos.length!==1?'s':''}</p>
+                        <div className="flex flex-wrap gap-3">
+                            {photos.map((photo,i) => (
+                                <div key={i} className="relative">
+                                    <img src={photo} alt={`Foto ${i+1}`} className="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow-sm" />
+                                    <button onClick={() => onRemovePhoto(i)}
+                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-md hover:bg-red-600">✕</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // STEP 4 — DataEntryScreen (actualizado con linea)
+    // ════════════════════════════════════════════════════════════
+    const DataEntryScreen = ({ empresa, promoterName, promoterId, linea, initialState, initialZone, onLogout, onChangeLinea }) => {
+        const [presentationsCompetidor, setPresentationsCompetidor] = useState([]);
+        const [presentationsMy, setPresentationsMy]                 = useState([]);
+        const [estados, setEstados]   = useState([]);
+        const [zonas, setZonas]       = useState([]);
+        const [filteredZonas, setFilteredZonas] = useState([]);
+        const [dataLoading, setDataLoading]     = useState(true);
+        const [loading, setLoading]   = useState(false);
+        const [error, setError]       = useState(null);
+        const [successMessage, setSuccessMessage] = useState(null);
+        const [geoError, setGeoError] = useState(null);
+        const [comments, setComments] = useState('');
+        const [priceErrors, setPriceErrors]   = useState({});
+        const [priceWarning, setPriceWarning] = useState('');
+        const [outOfStockItems, setOutOfStockItems] = useState(new Set());
+        const [isMayorista, setIsMayorista]         = useState(false);
+        const [isClienteCerrado, setIsClienteCerrado] = useState(false);
+        const [beforePhotos, setBeforePhotos] = useState([]);
+        const [afterPhotos, setAfterPhotos]   = useState([]);
+        const [showPlanogramModal, setShowPlanogramModal] = useState(false);
+        const [visitStarted, setVisitStarted] = useState(false);
+
+        // ── Key de storage incluye linea_id ──────────────────────
+        const FORM_STORAGE_KEY = `precio-form-v2-${empresa.id}-${promoterId}-${linea.id}`;
+
+        const makeEmptyForm = () => ({
+            state: initialState || '',
+            zone:  initialZone  || '',
+            trade: '',
+            competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
+            myitems:         [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
+            totalFacesBefore: '',
+            our_faces_before_manual: '',
+            totalFaces: ''
+        });
+
+        const [newItem, setNewItem] = useState(makeEmptyForm);
+
+        // ── Cargar borrador guardado ─────────────────────────────
+        useEffect(() => {
+            try {
+                const saved = localStorage.getItem(FORM_STORAGE_KEY);
+                if (saved) {
+                    const p = JSON.parse(saved);
+                    setNewItem(p.newItem || makeEmptyForm());
+                    setComments(p.comments || '');
+                    setIsMayorista(!!p.isMayorista);
+                    setIsClienteCerrado(!!p.isClienteCerrado);
+                    setBeforePhotos(p.beforePhotos || []);
+                    setAfterPhotos(p.afterPhotos || []);
+                    setVisitStarted(!!p.visitStarted);
+                }
+            } catch(e) { console.warn('Error restaurando formulario', e); }
+        }, [FORM_STORAGE_KEY]);
+
+        // ── Guardado robusto ─────────────────────────────────────
+        const formDataRef = useRef({});
+        useEffect(() => {
+            formDataRef.current = { newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted };
+        }, [newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted]);
+
+        const saveFormDebounced = useRef(debounce(() => {
+            try { localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formDataRef.current)); }
+            catch(e) { console.warn('Error guardando', e); }
+        }, 700)).current;
+
+        useEffect(() => {
+            const saveNow = () => { try { localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formDataRef.current)); } catch{} };
+            window.addEventListener('beforeunload', saveNow);
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState==='hidden') saveNow(); });
+            return () => window.removeEventListener('beforeunload', saveNow);
+        }, []);
+
+        useEffect(() => { if (promoterId) saveFormDebounced(); },
+            [newItem, comments, isMayorista, isClienteCerrado, beforePhotos, afterPhotos, visitStarted]);
+
+        // ── Cálculos de caras ────────────────────────────────────
+        const ourFacesBeforeSum = useMemo(() =>
+            newItem.myitems.filter(i=>i.presentation!=='SIN STOCK').reduce((s,i)=>s+(parseInt(i.faces_before)||0),0),
+        [newItem.myitems]);
+        const ourFacesAfterSum = useMemo(() =>
+            newItem.myitems.filter(i=>i.presentation!=='SIN STOCK').reduce((s,i)=>s+(parseInt(i.faces_after)||0),0),
+        [newItem.myitems]);
+        const facesBeforeDifference = newItem.our_faces_before_manual
+            ? Math.abs(parseInt(newItem.our_faces_before_manual)-ourFacesBeforeSum) : null;
+
+        // ── Cargar catálogos filtrados por linea_id ──────────────
+        useEffect(() => {
+            const fetchData = async () => {
+                setDataLoading(true);
+                try {
+                    // Competidor: registros de esta línea O registros sin línea asignada (legado)
+                    const { data: compData } = await supabase.from('web_competidor').select('presentation')
+                        .eq('empresa_id', empresa.id).eq('linea_id', linea.id).order('presentation');
+                    // Si no hay registros con linea_id, intentar los sin linea_id (legado)
+                    let compPresentations = compData?.map(p=>p.presentation) || [];
+                    if (compPresentations.length === 0) {
+                        const { data: compLegacy } = await supabase.from('web_competidor').select('presentation')
+                            .eq('empresa_id', empresa.id).is('linea_id', null).order('presentation');
+                        compPresentations = compLegacy?.map(p=>p.presentation) || [];
+                    }
+
+                    const { data: myData } = await supabase.from('web_myproductos').select('presentation')
+                        .eq('empresa_id', empresa.id).eq('linea_id', linea.id).order('presentation');
+                    let myPresentations = myData?.map(p=>p.presentation) || [];
+                    if (myPresentations.length === 0) {
+                        const { data: myLegacy } = await supabase.from('web_myproductos').select('presentation')
+                            .eq('empresa_id', empresa.id).is('linea_id', null).order('presentation');
+                        myPresentations = myLegacy?.map(p=>p.presentation) || [];
+                    }
+
+                    const { data: estadosData } = await supabase.from('web_estados').select('id, nombre').order('nombre');
+                    const { data: zonasData }   = await supabase.from('web_zonas').select('id, nombre, estado_id').order('nombre');
+
+                    setPresentationsCompetidor(compPresentations);
+                    setPresentationsMy(myPresentations);
+                    setEstados(estadosData||[]);
+                    setZonas(zonasData||[]);
+                } catch(e) {
+                    console.error('Error cargando datos:', e);
+                    setError(`Error al cargar datos: ${e.message}`);
+                } finally { setDataLoading(false); }
+            };
+            fetchData();
+        }, [empresa.id, linea.id]);
+
+        useEffect(() => {
+            if (newItem.state) {
+                const est = estados.find(e=>e.nombre===newItem.state);
+                if (est) {
+                    const filtered = zonas.filter(z=>z.estado_id===est.id).map(z=>z.nombre.replace('Zona ',''));
+                    setFilteredZonas(filtered);
+                    if (newItem.zone && !filtered.includes(newItem.zone)) setNewItem(prev=>({...prev,zone:''}));
+                } else setFilteredZonas([]);
+            } else setFilteredZonas([]);
+        }, [newItem.state, estados, zonas]);
+
+        // ── Sync pendientes ──────────────────────────────────────
+        useEffect(() => {
+            const syncPending = async () => {
+                if (!navigator.onLine) return;
+                const db = await openDB();
+                const tx = db.transaction('pendientes','readwrite');
+                const store = tx.objectStore('pendientes');
+                const pending = await new Promise(res => { const r=store.getAll(); r.onsuccess=()=>res(r.result); });
+                for (let item of pending) {
+                    try {
+                        const ub=[], ua=[];
+                        for (const p of item.before_photos||[]) { const f=dataURLtoFile(p,`before_${crypto.randomUUID()}.jpg`); await supabase.storage.from('visits_photos').upload(`before/${f.name}`,f); ub.push(f.name); }
+                        for (const p of item.after_photos||[])  { const f=dataURLtoFile(p,`after_${crypto.randomUUID()}.jpg`);  await supabase.storage.from('visits_photos').upload(`after/${f.name}`,f);  ua.push(f.name); }
+                        item.before_photos=ub; item.after_photos=ua;
+                        const { error: ie } = await supabase.from('web_precios').insert([item]);
+                        if (ie) throw ie;
+                        await new Promise(res => { const r=store.delete(item.id); r.onsuccess=res; });
+                        setSuccessMessage('✅ Visitas pendientes sincronizadas.');
+                    } catch(e) { console.error('Error sync:', e); }
+                }
+            };
+            window.addEventListener('online', syncPending);
+            syncPending();
+            return () => window.removeEventListener('online', syncPending);
+        }, []);
+
+        const dataURLtoFile = (dataurl, filename) => {
+            let arr=dataurl.split(','), mime=arr[0].match(/:(.*?);/)[1], bstr=atob(arr[1]), n=bstr.length, u8=new Uint8Array(n);
+            while(n--) u8[n]=bstr.charCodeAt(n);
+            return new File([u8], filename, {type:mime});
+        };
+
+        const handleInputChange = (e, type, id, field) => {
+            const { value } = e.target;
+            setNewItem(prev => ({
+                ...prev,
+                [type]: prev[type].map(item => {
+                    if (item.id !== id) return item;
+                    const upd = {...item, [field]: value};
+                    if (field==='presentation' && value==='SIN STOCK') {
+                        upd.price=''; upd.currency='';
+                        if (type==='myitems') { upd.stock_shelf=''; upd.stock_warehouse=''; upd.faces_before=''; upd.faces_after=''; }
+                    }
+                    return upd;
+                })
+            }));
+            if (field==='presentation' && value==='SIN STOCK' && type==='myitems')
+                setOutOfStockItems(prev=>new Set([...prev,id]));
+            if (priceErrors[id]) { setPriceErrors(prev=>{const n={...prev};delete n[id];return n;}); setPriceWarning(''); }
+        };
+
+        const handleAddClick = (type) => setNewItem(prev=>({...prev,[type]:[...prev[type],{id:crypto.randomUUID(),presentation:'',price:'',currency:'',stock_shelf:'',stock_warehouse:'',faces_before:'',faces_after:''}]}));
+        const handleRemoveClick = (type, id) => {
+            setNewItem(prev=>({...prev,[type]:prev[type].filter(i=>i.id!==id)}));
+            if (priceErrors[id]) { setPriceErrors(prev=>{const n={...prev};delete n[id];return n;}); setPriceWarning(''); }
+            if (type==='myitems') setOutOfStockItems(prev=>{const s=new Set(prev);s.delete(id);return s;});
+        };
+        const toggleOutOfStock = (id) => setOutOfStockItems(prev=>{const s=new Set(prev);s.has(id)?s.delete(id):s.add(id);return s;});
+
+        const validatePrices = (items) => {
+            const newErrors={};
+            items.forEach(item => {
+                if (item.presentation==='SIN STOCK'||!item.price||!item.currency) return;
+                const p=parseFloat(item.price); if(isNaN(p)) return;
+                if (item.currency==='BS'&&(p<100||p>2500)) newErrors[item.id]="El precio en Bs debe estar entre 100 y 2500 Bs.";
+                else if (item.currency==='$') {
+                    if (isMayorista&&(p<0.1||p>70))  newErrors[item.id]="El precio en $ debe estar entre $0.10 y $70.00 para mayorista.";
+                    else if (!isMayorista&&(p<0.01||p>10)) newErrors[item.id]="El precio en $ debe estar entre $0.01 y $10.00.";
+                }
+            });
+            setPriceErrors(newErrors);
+            const hasErr=Object.keys(newErrors).length>0;
+            setPriceWarning(hasErr?"❌ Error: Algunos precios están fuera del rango esperado.":'');
+            return !hasErr;
+        };
+
+        const resetForm = () => {
+            setComments(''); setIsMayorista(false); setIsClienteCerrado(false);
+            setNewItem(makeEmptyForm()); setOutOfStockItems(new Set());
+            setBeforePhotos([]); setAfterPhotos([]);
+            localStorage.removeItem(FORM_STORAGE_KEY);
+            setVisitStarted(false);
+        };
+
+        const handleStartVisit = () => {
+            if (beforePhotos.length===0) { setError('Debes tomar al menos una foto "Antes" para iniciar la visita.'); return; }
+            setVisitStarted(true);
+        };
+
+        const handleSaveData = async (e) => {
+            e.preventDefault();
+            setLoading(true); setError(null); setSuccessMessage(null); setGeoError(null); setPriceWarning('');
+
+            if (!isClienteCerrado) {
+                if (!validatePrices([...newItem.competitoritems,...newItem.myitems])) { setLoading(false); return; }
+            }
+            if (afterPhotos.length===0) { setError('Debes tomar al menos una foto "después".'); setLoading(false); return; }
+
+            let latitude=null, longitude=null;
+            try {
+                const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+                latitude=pos.coords.latitude; longitude=pos.coords.longitude;
+            } catch(geoErr) {
+                console.warn('Geo error:', geoErr.message);
+                setGeoError("No se pudo obtener ubicación. La visita podría marcarse como no confirmada.");
+            }
+
+            try {
+                const errMsg=[];
+                if (!newItem.state) errMsg.push("Estado");
+                if (!newItem.zone)  errMsg.push("Zona");
+                if (!newItem.trade) {
+                    errMsg.push("Comercio");
+                } else {
+                    const { data: cd } = await supabase.from('web_clientes').select('trade_name')
+                        .eq('trade_name', newItem.trade).eq('empresa_id', empresa.id).single();
+                    if (cd?.trade_name !== newItem.trade) errMsg.push("Comercio (selecciona uno válido de la lista)");
+                }
+                if (errMsg.length>0) { setError(`Completa: ${errMsg.join(', ')}.`); setLoading(false); return; }
+
+                let validComp=[], validMy=[];
+                if (!isClienteCerrado) {
+                    validComp = newItem.competitoritems.filter(i=>i.presentation&&(i.presentation==='SIN STOCK'||(i.price&&i.currency)));
+                    validMy   = newItem.myitems.filter(i=>i.presentation&&(i.presentation==='SIN STOCK'||(i.price&&i.currency)));
+                    if (validComp.length===0&&validMy.length===0) { setError("Agrega al menos un ítem completo."); setLoading(false); return; }
+                }
+                if (isClienteCerrado&&!comments.trim()) { setError("Para cliente cerrado, ingresa un comentario."); setLoading(false); return; }
+
+                // Subir fotos
+                const uploadedBefore=[], uploadedAfter=[];
+                for (const p of beforePhotos) { const fn=`before_${crypto.randomUUID()}.jpg`; const f=dataURLtoFile(p,fn); const {error:ue}=await supabase.storage.from('visits_photos').upload(`before/${fn}`,f,{cacheControl:'3600',upsert:false}); if(ue) throw new Error(`Error foto antes: ${ue.message}`); uploadedBefore.push(fn); }
+                for (const p of afterPhotos)  { const fn=`after_${crypto.randomUUID()}.jpg`;  const f=dataURLtoFile(p,fn); const {error:ue}=await supabase.storage.from('visits_photos').upload(`after/${fn}`,f,{cacheControl:'3600',upsert:false});  if(ue) throw new Error(`Error foto después: ${ue.message}`); uploadedAfter.push(fn); }
+
+                const visitData = {
+                    empresa_id: empresa.id, promoter_id: promoterId, promoter_name: promoterName,
+                    // ← NUEVO: linea_id y linea_nombre
+                    linea_id: linea.id, linea_nombre: linea.nombre,
+                    state: newItem.state, zone: newItem.zone, trade: newItem.trade,
+                    competitoritems: validComp.map(i=>({ presentation:i.presentation, price:i.presentation==='SIN STOCK'?null:parseFloat(i.price), currency:i.presentation==='SIN STOCK'?null:i.currency })),
+                    myitems: validMy.map(i=>({ presentation:i.presentation, price:i.presentation==='SIN STOCK'?null:parseFloat(i.price), currency:i.presentation==='SIN STOCK'?null:i.currency, stock_shelf:i.presentation==='SIN STOCK'?null:(outOfStockItems.has(i.id)?null:(i.stock_shelf!==''?parseFloat(i.stock_shelf):null)), stock_warehouse:i.presentation==='SIN STOCK'?null:(outOfStockItems.has(i.id)?null:(i.stock_warehouse!==''?parseFloat(i.stock_warehouse):null)), faces_before:i.presentation==='SIN STOCK'?null:(i.faces_before!==''?parseInt(i.faces_before):null), faces_after:i.presentation==='SIN STOCK'?null:(i.faces_after!==''?parseInt(i.faces_after):null) })),
+                    latitude, longitude, comments: comments.trim()||null,
+                    p_mayorista: isMayorista?'Si':'No', cliente_cerrado: isClienteCerrado?'Si':'No',
+                    before_photos: uploadedBefore, after_photos: uploadedAfter,
+                    total_faces_before: newItem.totalFacesBefore?parseInt(newItem.totalFacesBefore):null,
+                    our_faces_before_manual: newItem.our_faces_before_manual?parseInt(newItem.our_faces_before_manual):null,
+                    our_faces_before_counted: ourFacesBeforeSum||null,
+                    total_faces: newItem.totalFaces?parseInt(newItem.totalFaces):null,
+                    our_faces_after: ourFacesAfterSum||null
+                };
+
+                if (navigator.onLine) {
+                    const { error: ie } = await supabase.from('web_precios').insert([visitData]);
+                    if (ie) throw ie;
+                    setSuccessMessage("✅ Visita guardada con éxito.");
+                    resetForm();
+                } else {
+                    visitData.id = crypto.randomUUID();
+                    const db = await openDB();
+                    const tx = db.transaction('pendientes','readwrite');
+                    tx.objectStore('pendientes').add(visitData);
+                    setSuccessMessage("✅ Guardado offline. Se sincronizará al conectar.");
+                    resetForm();
+                }
+            } catch(err) {
+                console.error('Error al guardar:', err);
+                setError(`Error al guardar: ${err.message}`);
+            } finally { setLoading(false); }
+        };
+
+        // ── Planograma: usa el de la línea si existe, si no el de empresa ──
+        const planogramImage = linea.planogram_image || empresa.planogramImage;
+
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-indigo-100 to-gray-100 p-2 sm:p-4 flex flex-col items-center relative">
+
+                {/* Header con info de línea */}
+                <div className="w-full max-w-4xl mb-4 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl">{getEmoji(linea.nombre)}</span>
+                        <div>
+                            <p className="font-extrabold text-indigo-700 text-sm leading-tight">{linea.nombre}</p>
+                            <button onClick={onChangeLinea}
+                                className="text-xs text-indigo-500 hover:text-indigo-700 underline leading-tight">
+                                Cambiar línea
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => {
+                            if (!window.confirm("¿Limpiar todos los datos de esta visita?")) return;
+                            localStorage.removeItem(FORM_STORAGE_KEY);
+                            resetForm();
+                            setSuccessMessage("✅ Formulario limpiado.");
+                        }} className="text-xs px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-lg font-medium flex items-center gap-1 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            Limpiar
+                        </button>
+                        <button onClick={onLogout} className="text-xs text-red-500 hover:text-red-700 font-medium border border-red-200 px-3 py-1.5 rounded-lg">
+                            Cerrar sesión
+                        </button>
+                    </div>
+                </div>
+
+                <div className="container w-full max-w-4xl bg-white card p-4 sm:p-6">
+                    <div className="mb-4">
+                        <span className="text-xs text-gray-400">{empresa.nombre}</span>
+                        <h1 className="text-xl sm:text-2xl font-extrabold text-center text-indigo-700 mb-1">Ingreso de Precios</h1>
+                        <p className="text-center text-gray-600 text-sm">
+                            <span className="font-semibold text-indigo-600">{promoterName}</span>
+                            {' · '}
+                            <span className="font-semibold text-purple-600">{linea.nombre}</span>
+                        </p>
+                    </div>
+
+                    <TopSellers empresaId={empresa.id} lineaId={linea.id} />
+                    <UserRank promoterName={promoterName} empresaId={empresa.id} lineaId={linea.id} />
+
+                    {priceWarning   && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-lg text-sm">{priceWarning}</div>}
+                    {error          && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-lg text-sm">{error}</div>}
+                    {successMessage && <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-3 mb-4 rounded-lg text-sm">{successMessage}</div>}
+                    {geoError       && <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 mb-4 rounded-lg text-sm">{geoError}</div>}
+                    {dataLoading    && <div className="text-center text-gray-600 text-sm mb-4">Cargando datos...</div>}
+
+                    <form onSubmit={handleSaveData} className="flex flex-col gap-4">
+                        {/* Estado / Zona / Comercio */}
+                        <div className="flex flex-col gap-2">
+                            <label className="block">
+                                <span className="text-gray-700 font-semibold text-sm">Estado</span>
+                                <select value={newItem.state} onChange={e=>setNewItem(prev=>({...prev,state:e.target.value}))}
+                                    className="w-full p-3 border border-gray-300 rounded-xl input-focus" required disabled={!!initialState}>
+                                    <option value="">-- Estado --</option>
+                                    {estados.map(e=><option key={e.id} value={e.nombre}>{e.nombre}</option>)}
+                                </select>
+                            </label>
+                            <label className="block">
+                                <span className="text-gray-700 font-semibold text-sm">Zona</span>
+                                <select value={newItem.zone} onChange={e=>setNewItem(prev=>({...prev,zone:e.target.value}))}
+                                    className="w-full p-3 border border-gray-300 rounded-xl input-focus" required>
+                                    <option value="">-- Zona --</option>
+                                    {filteredZonas.map(z=><option key={z} value={z}>{z}</option>)}
+                                </select>
+                            </label>
+                            <label className="block">
+                                <span className="text-gray-700 font-semibold text-sm">Comercio</span>
+                                <ClienteAutocomplete value={newItem.trade}
+                                    onChange={value=>setNewItem(prev=>({...prev,trade:value}))}
+                                    empresaId={empresa.id} />
+                            </label>
                         </div>
 
-                        <TopSellers empresaId={empresa.id} />
-                        <UserRank promoterName={promoterName} empresaId={empresa.id} />
+                        <PhotoCapture label="Fotos Antes (anaquel inicial)"
+                            onPhotoTaken={photo=>setBeforePhotos(prev=>[...prev,photo])}
+                            onRemovePhoto={i=>setBeforePhotos(prev=>prev.filter((_,j)=>j!==i))}
+                            photos={beforePhotos} />
 
-                        {priceWarning && (
-                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-lg text-sm">
-                                {priceWarning}
-                            </div>
-                        )}
-                        {error && (
-                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded-lg text-sm">
-                                {error}
-                            </div>
-                        )}
-                        {successMessage && (
-                            <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-3 mb-4 rounded-lg text-sm">
-                                {successMessage}
-                            </div>
-                        )}
-                        {geoError && (
-                            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 mb-4 rounded-lg text-sm">
-                                {geoError}
-                            </div>
-                        )}
-
-                        {dataLoading && <div className="text-center text-gray-600 text-sm">Cargando datos...</div>}
-
-                        <form onSubmit={handleSaveData} className="flex flex-col gap-4">
-                            <div className="flex flex-col gap-2">
-                                <label className="block">
-                                    <span className="text-gray-700 font-semibold text-sm">Estado</span>
-                                    <select
-                                        value={newItem.state}
-                                        onChange={(e) => setNewItem(prev => ({ ...prev, state: e.target.value }))}
-                                        className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                                        required
-                                        disabled={!!initialState}
-                                    >
-                                        <option value="">-- Estado --</option>
-                                        {estados.map(e => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
-                                    </select>
-                                </label>
-                                <label className="block">
-                                    <span className="text-gray-700 font-semibold text-sm">Zona</span>
-                                    <select
-                                        value={newItem.zone}
-                                        onChange={(e) => setNewItem(prev => ({ ...prev, zone: e.target.value }))}
-                                        className="w-full p-3 border border-gray-300 rounded-xl input-focus"
-                                        required
-                                    >
-                                        <option value="">-- Zona --</option>
-                                        {filteredZonas.map(z => <option key={z} value={z}>{z}</option>)}
-                                    </select>
-                                </label>
-                                <label className="block">
-                                    <span className="text-gray-700 font-semibold text-sm">Comercio</span>
-                                    <ClienteAutocomplete
-                                        value={newItem.trade}
-                                        onChange={(value) => setNewItem(prev => ({ ...prev, trade: value }))}
-                                        empresaId={empresa.id}
-                                    />
-                                </label>
-                            </div>
-
-                            <PhotoCapture
-                                label="Fotos Antes (anaquel inicial)"
-                                onPhotoTaken={(photo) => setBeforePhotos(prev => [...prev, photo])}
-                                onRemovePhoto={(index) => setBeforePhotos(prev => prev.filter((_, i) => i !== index))}
-                                photos={beforePhotos}
-                            />
-
-                            {!visitStarted && (
-                                // BLOQUE DE REFERENCIA PREVISITA - SIEMPRE VISIBLE
-                                <div className={`p-4 rounded-xl border mb-5 ${visitStarted ? 'bg-gray-50 border-gray-300' : 'bg-indigo-50 border-indigo-100'}`}>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-indigo-800 font-bold text-base">
-                                            {visitStarted ? 'Referencia previsita (bloqueada)' : 'Previsita - Estado inicial del anaquel'}
-                                        </h3>
-                                        {visitStarted && (
-                                            <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">
-                                                Ya en visita
-                                            </span>
-                                        )}
+                        {!visitStarted && (
+                            <div className="p-4 rounded-xl border bg-indigo-50 border-indigo-100 mb-5">
+                                <h3 className="text-indigo-800 font-bold text-base mb-3">Previsita — Estado inicial del anaquel</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-gray-700 text-sm font-semibold mb-1.5">Caras totales del anaquel (antes)</label>
+                                        <input type="number" min="0" placeholder="Ej: 72" value={newItem.totalFacesBefore||''}
+                                            onChange={e=>setNewItem(prev=>({...prev,totalFacesBefore:e.target.value}))}
+                                            className="w-full p-3 border rounded-xl input-focus" />
                                     </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                        <div>
-                                            <label className="block text-gray-700 text-sm font-semibold mb-1.5">
-                                                Caras totales del anaquel (antes)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                placeholder="Ej: 72"
-                                                value={newItem.totalFacesBefore || ''}
-                                                onChange={(e) => setNewItem(prev => ({ ...prev, totalFacesBefore: e.target.value }))}
-                                                disabled={visitStarted}   // ← clave: se bloquea después
-                                                className={`w-full p-3 border rounded-xl input-focus ${visitStarted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-gray-700 text-sm font-semibold mb-1.5">
-                                                Caras totales nuestras (antes)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                placeholder="Ej: 18"
-                                                value={newItem.our_faces_before_manual || ''}
-                                                onChange={(e) => setNewItem(prev => ({ ...prev, our_faces_before_manual: e.target.value }))}
-                                                disabled={visitStarted}   // ← clave: se bloquea después
-                                                className={`w-full p-3 border rounded-xl input-focus ${visitStarted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                            />
-                                        </div>
+                                    <div>
+                                        <label className="block text-gray-700 text-sm font-semibold mb-1.5">Caras totales nuestras (antes)</label>
+                                        <input type="number" min="0" placeholder="Ej: 18" value={newItem.our_faces_before_manual||''}
+                                            onChange={e=>setNewItem(prev=>({...prev,our_faces_before_manual:e.target.value}))}
+                                            className="w-full p-3 border rounded-xl input-focus" />
                                     </div>
-
-                                    {visitStarted && newItem.our_faces_before_manual && (
-                                        <div className="mt-4 text-sm text-gray-600 bg-white p-3 rounded-lg border">
-                                            <strong>Referencia guardada:</strong> {newItem.our_faces_before_manual} caras nuestras
-                                            {facesBeforeDifference !== null && facesBeforeDifference > 0 && (
-                                                <span className="ml-2">(diferencia con conteo detallado: {facesBeforeDifference})</span>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {!visitStarted && (
-                                <button
-                                    type="button"
-                                    onClick={handleStartVisit}
-                                    className="w-full btn-primary text-white font-semibold py-3 rounded-xl shadow-md flex items-center justify-center gap-2"
-                                >
-                                    Continuar con la Visita
-                                </button>
-                            )}
-                            {visitStarted && (
-                                <>
-                                    <div className="border-t border-gray-200 my-4"></div>
-
-                                    <div className="flex items-center gap-4 mb-2">
-                                        <label className="flex items-center text-sm text-gray-700 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={isMayorista}
-                                                onChange={(e) => setIsMayorista(e.target.checked)}
-                                                className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                            />
-                                            Precios Mayoristas
-                                        </label>
-                                        <label className="flex items-center text-sm text-gray-700 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={isClienteCerrado}
-                                                onChange={(e) => setIsClienteCerrado(e.target.checked)}
-                                                className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                            />
-                                            Cliente Cerrado
-                                        </label>
-                                    </div>
-
-                                    {!isClienteCerrado && (
-                                        <>
-                                            <div>
-                                                <span className="text-gray-700 font-bold text-sm">Precios Competencia por Unidad</span>
-                                                {newItem.competitoritems.map(item => (
-                                                    <ItemRow
-                                                        key={item.id}
-                                                        item={item}
-                                                        type="competitoritems"
-                                                        onChange={handleInputChange}
-                                                        onRemove={handleRemoveClick}
-                                                        presentations={presentationsCompetidor}
-                                                        currencies={['BS', '$', 'Pesos']}
-                                                        canRemove={newItem.competitoritems.length > 1}
-                                                        errors={priceErrors}
-                                                        setErrors={setPriceErrors}
-                                                    />
-                                                ))}
-                                                <div className="flex justify-end mt-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleAddClick('competitoritems')}
-                                                        className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200"
-                                                    >
-                                                        <Plus size={24} />
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-gray-700 font-bold text-sm">Nuestros Precios y Caras</span>
-                                                {newItem.myitems.map(item => (
-                                                    <ItemRow
-                                                        key={item.id}
-                                                        item={item}
-                                                        type="myitems"
-                                                        onChange={handleInputChange}
-                                                        onRemove={handleRemoveClick}
-                                                        presentations={presentationsMy}
-                                                        currencies={['BS', '$', 'Pesos']}
-                                                        canRemove={newItem.myitems.length > 1}
-                                                        errors={priceErrors}
-                                                        setErrors={setPriceErrors}
-                                                        isMyItem={true}
-                                                        onToggleOutOfStock={toggleOutOfStock}
-                                                        isOutOfStock={outOfStockItems.has(item.id)}
-                                                    />
-                                                ))}
-                                                <div className="flex justify-end mt-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleAddClick('myitems')}
-                                                        className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200"
-                                                    >
-                                                        <Plus size={24} />
-                                                    </button>
-                                                </div>
-
-                                                <div className="mt-5 p-4 bg-green-50 rounded-xl border border-green-100 text-center">
-                                                    <p className="text-green-800 font-medium text-lg">
-                                                        Caras totales NUESTRAS DESPUÉS (calculado automáticamente):
-                                                        <span className="text-2xl font-bold ml-2">{ourFacesAfterSum}</span>
-                                                    </p>
-                                                    <p className="text-sm text-green-700 mt-1">
-                                                        Suma de todas las caras después ingresadas arriba
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                                                <label className="block text-gray-800 font-semibold mb-2">
-                                                    Caras Totales DESPUÉS (Anaquel Completo)
-                                                    <span className="text-indigo-600 ml-1 text-xs block font-normal">(incluye competencia + nuestros productos)</span>
-                                                </label>
-                                                <div className="flex items-center gap-3">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        placeholder="Ej: 48"
-                                                        value={newItem.totalFaces || ''}
-                                                        onChange={(e) => setNewItem(prev => ({ ...prev, totalFaces: e.target.value }))}
-                                                        className="w-full max-w-xs p-3 border border-gray-300 rounded-xl input-focus"
-                                                        required={!isClienteCerrado}
-                                                    />
-                                                    <span className="text-gray-500 text-sm">caras</span>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Cuenta todas las posiciones visibles en el anaquel (mínimo 1 fila completa)
-                                                </p>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    <PhotoCapture
-                                        label="Fotos Después (anaquel final)"
-                                        onPhotoTaken={(photo) => setAfterPhotos(prev => [...prev, photo])}
-                                        onRemovePhoto={(index) => setAfterPhotos(prev => prev.filter((_, i) => i !== index))}
-                                        photos={afterPhotos}
-                                    />
-
-                                    <div className="flex flex-col">
-                                        <label className="text-gray-700 font-semibold text-sm mb-1">
-                                            Comentarios {isClienteCerrado ? '(requerido)' : '(opcional)'}
-                                        </label>
-                                        <textarea
-                                            value={comments}
-                                            onChange={(e) => setComments(e.target.value)}
-                                            placeholder="Describe alguna situación (ej: producto agotado, competidor SIN STOCK, etc.)"
-                                            className="w-full p-3 border border-gray-300 rounded-xl input-focus h-20 resize-none"
-                                            required={isClienteCerrado}
-                                        />
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={loading || dataLoading}
-                                        className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2"
-                                    >
-                                        <Save size={24} />
-                                        {loading ? 'Guardando...' : 'Guardar Datos'}
-                                    </button>
-                                </>
-                            )}
-                        </form>
-                    </div>
-
-                    {/* Botón flotante y Modal del Planograma */}
-                    {empresa?.planogramImage && (
-                        <>
-                            <button
-                                onClick={() => setShowPlanogramModal(true)}
-                                className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-xl flex items-center justify-center hover:bg-indigo-700 transition transform active:scale-95"
-                                title="Ver Planograma"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                                    <polyline points="21 15 16 10 5 21"/>
-                                </svg>
+                        {!visitStarted && (
+                            <button type="button" onClick={handleStartVisit}
+                                className="w-full btn-primary text-white font-semibold py-3 rounded-xl shadow-md">
+                                Continuar con la Visita
                             </button>
-                            {showPlanogramModal && (
-                                <div
-                                    className="fixed inset-0 z-[100] bg-black/75 flex items-center justify-center p-4"
-                                    onClick={() => setShowPlanogramModal(false)}
-                                >
-                                    <div
-                                        className="relative bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
-                                        onClick={e => e.stopPropagation()}
-                                    >
-                                        <div className="flex items-center justify-between p-4 border-b">
-                                            <h3 className="text-xl font-bold text-indigo-700">
-                                                Planograma - {empresa.nombre}
-                                            </h3>
-                                            <button
-                                                onClick={() => setShowPlanogramModal(false)}
-                                                className="text-3xl text-gray-600 hover:text-gray-900 leading-none"
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                        <div className="p-4 bg-gray-100 overflow-auto max-h-[calc(90vh-120px)]">
-                                            <img
-                                                src={`${supabaseUrl}/storage/v1/object/public/visits_photos/${empresa.planogramImage}`}
-                                                alt={`Planograma de ${empresa.nombre}`}
-                                                className="w-full h-auto object-contain"
-                                                onError={e => {
-                                                    e.target.src = "https://via.placeholder.com/800x1200?text=Error+al+cargar+planograma";
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="p-3 text-center text-sm text-gray-500 border-t">
-                                            Toca fuera para cerrar
-                                        </div>
-                                    </div>
+                        )}
+
+                        {visitStarted && (
+                            <>
+                                <div className="border-t border-gray-200 my-4"></div>
+                                <div className="flex items-center gap-4 mb-2">
+                                    <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+                                        <input type="checkbox" checked={isMayorista} onChange={e=>setIsMayorista(e.target.checked)}
+                                            className="mr-2 h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                                        Precios Mayoristas
+                                    </label>
+                                    <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+                                        <input type="checkbox" checked={isClienteCerrado} onChange={e=>setIsClienteCerrado(e.target.checked)}
+                                            className="mr-2 h-4 w-4 text-indigo-600 border-gray-300 rounded" />
+                                        Cliente Cerrado
+                                    </label>
                                 </div>
-                            )}
-                        </>
+
+                                {!isClienteCerrado && (
+                                    <>
+                                        <div>
+                                            <span className="text-gray-700 font-bold text-sm">Precios Competencia por Unidad</span>
+                                            {newItem.competitoritems.map(item=>(
+                                                <ItemRow key={item.id} item={item} type="competitoritems"
+                                                    onChange={handleInputChange} onRemove={handleRemoveClick}
+                                                    presentations={presentationsCompetidor} currencies={['BS','$','Pesos']}
+                                                    canRemove={newItem.competitoritems.length>1}
+                                                    errors={priceErrors} setErrors={setPriceErrors} />
+                                            ))}
+                                            <div className="flex justify-end mt-2">
+                                                <button type="button" onClick={()=>handleAddClick('competitoritems')}
+                                                    className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200"><Plus size={24}/></button>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <span className="text-gray-700 font-bold text-sm">Nuestros Precios y Caras</span>
+                                            {newItem.myitems.map(item=>(
+                                                <ItemRow key={item.id} item={item} type="myitems"
+                                                    onChange={handleInputChange} onRemove={handleRemoveClick}
+                                                    presentations={presentationsMy} currencies={['BS','$','Pesos']}
+                                                    canRemove={newItem.myitems.length>1}
+                                                    errors={priceErrors} setErrors={setPriceErrors}
+                                                    onToggleOutOfStock={toggleOutOfStock} isOutOfStock={outOfStockItems.has(item.id)} />
+                                            ))}
+                                            <div className="flex justify-end mt-2">
+                                                <button type="button" onClick={()=>handleAddClick('myitems')}
+                                                    className="btn-icon bg-indigo-100 text-indigo-600 p-2 rounded-full hover:bg-indigo-200"><Plus size={24}/></button>
+                                            </div>
+                                            <div className="mt-5 p-4 bg-green-50 rounded-xl border border-green-100 text-center">
+                                                <p className="text-green-800 font-medium text-lg">
+                                                    Caras NUESTRAS DESPUÉS: <span className="text-2xl font-bold ml-2">{ourFacesAfterSum}</span>
+                                                </p>
+                                                <p className="text-sm text-green-700 mt-1">Suma automática de caras después ingresadas</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                            <label className="block text-gray-800 font-semibold mb-2">
+                                                Caras Totales DESPUÉS (Anaquel Completo)
+                                                <span className="text-indigo-600 ml-1 text-xs block font-normal">(incluye competencia + nuestros productos)</span>
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <input type="number" min="0" placeholder="Ej: 48" value={newItem.totalFaces||''}
+                                                    onChange={e=>setNewItem(prev=>({...prev,totalFaces:e.target.value}))}
+                                                    className="w-full max-w-xs p-3 border border-gray-300 rounded-xl input-focus"
+                                                    required={!isClienteCerrado} />
+                                                <span className="text-gray-500 text-sm">caras</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <PhotoCapture label="Fotos Después (anaquel final)"
+                                    onPhotoTaken={photo=>setAfterPhotos(prev=>[...prev,photo])}
+                                    onRemovePhoto={i=>setAfterPhotos(prev=>prev.filter((_,j)=>j!==i))}
+                                    photos={afterPhotos} />
+
+                                <div className="flex flex-col">
+                                    <label className="text-gray-700 font-semibold text-sm mb-1">
+                                        Comentarios {isClienteCerrado?'(requerido)':'(opcional)'}
+                                    </label>
+                                    <textarea value={comments} onChange={e=>setComments(e.target.value)}
+                                        placeholder="Describe alguna situación..."
+                                        className="w-full p-3 border border-gray-300 rounded-xl input-focus h-20 resize-none"
+                                        required={isClienteCerrado} />
+                                </div>
+
+                                <button type="submit" disabled={loading||dataLoading}
+                                    className="w-full btn-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
+                                    <Save size={24} />
+                                    {loading ? 'Guardando...' : 'Guardar Datos'}
+                                </button>
+                            </>
+                        )}
+                    </form>
+                </div>
+
+                {/* Botón flotante planograma */}
+                {planogramImage && (
+                    <>
+                        <button onClick={()=>setShowPlanogramModal(true)}
+                            className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-indigo-600 text-white shadow-xl flex items-center justify-center hover:bg-indigo-700 transition active:scale-95"
+                            title="Ver Planograma">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </button>
+                        {showPlanogramModal && (
+                            <div className="fixed inset-0 z-[100] bg-black/75 flex items-center justify-center p-4" onClick={()=>setShowPlanogramModal(false)}>
+                                <div className="relative bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl" onClick={e=>e.stopPropagation()}>
+                                    <div className="flex items-center justify-between p-4 border-b">
+                                        <h3 className="text-xl font-bold text-indigo-700">Planograma — {linea.nombre}</h3>
+                                        <button onClick={()=>setShowPlanogramModal(false)} className="text-3xl text-gray-600 hover:text-gray-900">×</button>
+                                    </div>
+                                    <div className="p-4 bg-gray-100 overflow-auto max-h-[calc(90vh-120px)]">
+                                        <img src={`${supabaseUrl}/storage/v1/object/public/visits_photos/${planogramImage}`}
+                                            alt="Planograma"
+                                            className="w-full h-auto object-contain"
+                                            onError={e=>{ e.target.src="https://via.placeholder.com/800x1200?text=Sin+planograma"; }} />
+                                    </div>
+                                    <div className="p-3 text-center text-sm text-gray-500 border-t">Toca fuera para cerrar</div>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // APP — orquesta los 4 steps
+    // ════════════════════════════════════════════════════════════
+    const App = () => {
+        const [step, setStep]               = useState(1);
+        const [empresa, setEmpresa]         = useState(null);
+        const [promoterId, setPromoterId]   = useState('');
+        const [promoterName, setPromoterName] = useState('');
+        const [initialState, setInitialState] = useState('');
+        const [initialZone, setInitialZone]   = useState('');
+        const [lineaSeleccionada, setLineaSeleccionada] = useState(null);
+
+        const handleEmpresaLogin = (data) => { setEmpresa(data); setStep(2); };
+
+        const handlePromotorLogin = (id, name, estado, zona) => {
+            setPromoterId(id); setPromoterName(name);
+            setInitialState(estado); setInitialZone(zona);
+            setStep(3); // → LineaSelector
+        };
+
+        const handleSelectLinea = (linea) => {
+            setLineaSeleccionada(linea);
+            setStep(4); // → DataEntryScreen
+        };
+
+        const handleChangeLinea = () => {
+            setLineaSeleccionada(null);
+            setStep(3); // Volver al selector sin cerrar sesión
+        };
+
+        const handleLogout = () => {
+            setStep(1); setEmpresa(null);
+            setPromoterId(''); setPromoterName('');
+            setInitialState(''); setInitialZone('');
+            setLineaSeleccionada(null);
+        };
+
+        return (
+            <ErrorBoundary>
+                <div className="font-sans antialiased">
+                    {step===1 && <EmpresaLogin onEmpresaLogin={handleEmpresaLogin} />}
+                    {step===2 && empresa && <PromotorLogin empresa={empresa} onPromotorLogin={handlePromotorLogin} onBack={()=>setStep(1)} />}
+                    {step===3 && empresa && (
+                        <LineaSelector empresa={empresa} promoterId={promoterId} promoterName={promoterName}
+                            onSelectLinea={handleSelectLinea} onLogout={handleLogout} />
+                    )}
+                    {step===4 && empresa && lineaSeleccionada && (
+                        <DataEntryScreen empresa={empresa} promoterName={promoterName} promoterId={promoterId}
+                            linea={lineaSeleccionada} initialState={initialState} initialZone={initialZone}
+                            onLogout={handleLogout} onChangeLinea={handleChangeLinea} />
                     )}
                 </div>
-            );
-        };
+            </ErrorBoundary>
+        );
+    };
 
-        const App = () => {
-            const [step, setStep] = useState(1);
-            const [empresa, setEmpresa] = useState(null);
-            const [promoterId, setPromoterId] = useState('');
-            const [promoterName, setPromoterName] = useState('');
-            const [initialState, setInitialState] = useState('');
-            const [initialZone, setInitialZone] = useState('');
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState(null);
-            const [successMessage, setSuccessMessage] = useState(null);
+    try {
+        const container = document.getElementById('root');
+        if (container) createRoot(container).render(<App />);
+    } catch(e) { console.error('Error al renderizar:', e); }
 
-            const [newItem, setNewItem] = useState({
-                state: '',
-                zone: '',
-                trade: '',
-                competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
-                totalFacesBefore: '',
-                our_faces_before_manual: '',
-                totalFaces: ''
-            });
-
-            const handleEmpresaLogin = (empresaData) => {
-                setEmpresa(empresaData);
-                setStep(2);
+    async function openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open('chispaDB', 2);
+            req.onupgradeneeded = e => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('pendientes')) db.createObjectStore('pendientes', { keyPath: 'id' });
             };
-
-            const handlePromotorLogin = (id, name, estadoNombre, zonaNombre) => {
-                setPromoterId(id);
-                setPromoterName(name);
-                setInitialState(estadoNombre);
-                setInitialZone(zonaNombre);
-                setNewItem(prev => ({ ...prev, state: estadoNombre, zone: zonaNombre }));
-                setStep(3);
-            };
-
-            const handleBackToEmpresa = () => {
-                setStep(1);
-                setEmpresa(null);
-            };
-
-            const handleLogout = () => {
-                setStep(1);
-                setEmpresa(null);
-                setPromoterId('');
-                setPromoterName('');
-                setInitialState('');
-                setInitialZone('');
-                setNewItem({
-                    state: '',
-                    zone: '',
-                    trade: '',
-                    competitoritems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '' }],
-                    myitems: [{ id: crypto.randomUUID(), presentation: '', price: '', currency: '', stock_shelf: '', stock_warehouse: '', faces_before: '', faces_after: '' }],
-                    totalFacesBefore: '',
-                    our_faces_before_manual: '',
-                    totalFaces: ''
-                });
-                setError(null);
-                setSuccessMessage(null);
-            };
-
-            return (
-                <ErrorBoundary>
-                    <div className="font-sans antialiased">
-                        {step === 1 && <EmpresaLogin onEmpresaLogin={handleEmpresaLogin} />}
-                        {step === 2 && empresa && (
-                            <PromotorLogin
-                                empresa={empresa}
-                                onPromotorLogin={handlePromotorLogin}
-                                onBack={handleBackToEmpresa}
-                            />
-                        )}
-                        {step === 3 && empresa && (
-                            <DataEntryScreen
-                                empresa={empresa}
-                                promoterName={promoterName}
-                                promoterId={promoterId}
-                                initialState={initialState}
-                                initialZone={initialZone}
-                                newItem={newItem}
-                                setNewItem={setNewItem}
-                                error={error}
-                                setError={setError}
-                                successMessage={successMessage}
-                                setSuccessMessage={setSuccessMessage}
-                                loading={loading}
-                                setLoading={setLoading}
-                                onLogout={handleLogout}
-                            />
-                        )}
-                    </div>
-                </ErrorBoundary>
-            );
-        };
-
-        try {
-            const container = document.getElementById('root');
-            if (container) {
-                const root = createRoot(container);
-                root.render(<App />);
-            }
-        } catch (e) {
-            console.error('Error al renderizar:', e);
-        }
-
-        async function openDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open('chispaDB', 2);
-                request.onupgradeneeded = e => {
-                    const db = e.target.result;
-                    if (!db.objectStoreNames.contains('pendientes')) {
-                        db.createObjectStore('pendientes', { keyPath: 'id' });
-                    }
-                };
-                request.onsuccess = e => resolve(e.target.result);
-                request.onerror = e => reject(e.target.error);
-            });
-        }
-    </script>
+            req.onsuccess = e => resolve(e.target.result);
+            req.onerror   = e => reject(e.target.error);
+        });
+    }
+</script>
 </body>
 </html>
