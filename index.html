@@ -529,28 +529,81 @@
     };
 
     // ════════════════════════════════════════════════════════════
-    // ClienteAutocomplete (sin cambios)
+    // ClienteAutocomplete — filtra por asignaciones del promotor
+    // Si el promotor tiene comercios asignados en web_promotor_clientes
+    // solo muestra esos. Si no tiene → muestra todos (comportamiento anterior).
     // ════════════════════════════════════════════════════════════
-    const ClienteAutocomplete = ({ value, onChange, empresaId }) => {
-        const [isOpen, setIsOpen]       = useState(false);
+    const ClienteAutocomplete = ({ value, onChange, empresaId, promoterId, lineaId }) => {
+        const [isOpen, setIsOpen]         = useState(false);
         const [searchTerm, setSearchTerm] = useState('');
-        const [clientes, setClientes]   = useState([]);
-        const [loading, setLoading]     = useState(false);
-        const wrapperRef    = useRef(null);
-        const debounceTimer = useRef(null);
+        const [clientes, setClientes]     = useState([]);
+        const [loading, setLoading]       = useState(false);
+        // IDs de clientes asignados al promotor (null = sin restricción)
+        const clientesAsignadosRef        = useRef(null);
+        const wrapperRef                  = useRef(null);
+        const debounceTimer               = useRef(null);
 
-        const buscar = async (term='') => {
+        // Cargar las asignaciones del promotor UNA sola vez al montar
+        useEffect(() => {
+            const cargarAsignaciones = async () => {
+                try {
+                    // Buscar comercios asignados a este promotor (activos)
+                    // Filtra por linea_id si tiene asignación específica, o linea_id IS NULL (todas las líneas)
+                    let q = supabase
+                        .from('web_promotor_clientes')
+                        .select('cliente_id')
+                        .eq('empresa_id', empresaId)
+                        .eq('promoter_id', promoterId)
+                        .eq('activa', true);
+
+                    // Incluir asignaciones de esta línea específica + asignaciones sin línea (aplica a todas)
+                    if (lineaId) {
+                        q = q.or(`linea_id.eq.${lineaId},linea_id.is.null`);
+                    }
+
+                    const { data } = await q;
+
+                    if (data && data.length > 0) {
+                        // Tiene asignaciones → guardar los IDs
+                        clientesAsignadosRef.current = data.map(r => r.cliente_id);
+                    } else {
+                        // Sin asignaciones → null = ver todos
+                        clientesAsignadosRef.current = null;
+                    }
+                } catch(e) {
+                    console.warn('Error cargando asignaciones de comercios:', e);
+                    clientesAsignadosRef.current = null;
+                }
+            };
+            cargarAsignaciones();
+        }, [empresaId, promoterId, lineaId]);
+
+        const buscar = async (term = '') => {
             setLoading(true);
             try {
-                const { data } = await supabase.from('web_clientes').select('trade_name')
-                    .eq('empresa_id', empresaId).ilike('trade_name', `%${term}%`).limit(20);
-                setClientes(data||[]);
+                let q = supabase
+                    .from('web_clientes')
+                    .select('id, trade_name')
+                    .eq('empresa_id', empresaId)
+                    .ilike('trade_name', `%${term}%`)
+                    .order('trade_name')
+                    .limit(30);
+
+                // Si tiene asignaciones, filtrar solo esos IDs
+                if (clientesAsignadosRef.current !== null) {
+                    q = q.in('id', clientesAsignadosRef.current);
+                }
+
+                const { data } = await q;
+                setClientes(data || []);
             } catch { setClientes([]); }
             finally { setLoading(false); }
         };
 
         useEffect(() => {
-            const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setIsOpen(false); };
+            const handler = (e) => {
+                if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setIsOpen(false);
+            };
             document.addEventListener('mousedown', handler);
             return () => document.removeEventListener('mousedown', handler);
         }, []);
@@ -561,21 +614,34 @@
             return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
         }, [searchTerm, empresaId]);
 
+        const tieneRestriccion = clientesAsignadosRef.current !== null;
+
         return (
             <div className="relative" ref={wrapperRef}>
                 <input type="text" placeholder="Nombre del comercio" value={searchTerm}
                     onChange={e => { setSearchTerm(e.target.value); onChange(e.target.value); setIsOpen(true); }}
                     onFocus={() => { setIsOpen(true); if (!searchTerm) buscar(''); }}
                     className="w-full p-3 border border-gray-300 rounded-xl input-focus" required />
+                {tieneRestriccion && !searchTerm && (
+                    <p className="text-xs text-indigo-500 mt-1">
+                        Mostrando tus {clientesAsignadosRef.current?.length || 0} comercio(s) asignado(s)
+                    </p>
+                )}
                 {isOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg dropdown-menu">
-                        {loading ? <div className="p-3 text-gray-500 text-sm">Buscando...</div>
-                        : clientes.length > 0 ? clientes.map((c,i) => (
-                            <div key={i} className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                onClick={() => { onChange(c.trade_name); setSearchTerm(c.trade_name); setIsOpen(false); }}>
-                                {c.trade_name}
-                            </div>
-                        )) : <div className="p-3 text-gray-500 text-sm">{searchTerm ? `Sin resultados para "${searchTerm}"` : 'Escribe para buscar'}</div>}
+                        {loading
+                            ? <div className="p-3 text-gray-500 text-sm">Buscando...</div>
+                            : clientes.length > 0
+                                ? clientes.map((c, i) => (
+                                    <div key={i} className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                        onClick={() => { onChange(c.trade_name); setSearchTerm(c.trade_name); setIsOpen(false); }}>
+                                        {c.trade_name}
+                                    </div>
+                                ))
+                                : <div className="p-3 text-gray-500 text-sm">
+                                    {searchTerm ? `Sin resultados para "${searchTerm}"` : 'Escribe para buscar'}
+                                  </div>
+                        }
                     </div>
                 )}
             </div>
@@ -726,29 +792,66 @@
         const facesBeforeDifference = newItem.our_faces_before_manual
             ? Math.abs(parseInt(newItem.our_faces_before_manual)-ourFacesBeforeSum) : null;
 
-        // ── Cargar catálogos filtrados por linea_id ──────────────
+        // ── Cargar catálogos filtrados por linea_id + cliente ────
         useEffect(() => {
             const fetchData = async () => {
                 setDataLoading(true);
                 try {
-                    // Competidor: registros de esta línea O registros sin línea asignada (legado)
+                    // ── Competidor: por línea, fallback a legado (NULL) ──
                     const { data: compData } = await supabase.from('web_competidor').select('presentation')
                         .eq('empresa_id', empresa.id).eq('linea_id', linea.id).order('presentation');
-                    // Si no hay registros con linea_id, intentar los sin linea_id (legado)
-                    let compPresentations = compData?.map(p=>p.presentation) || [];
+                    let compPresentations = compData?.map(p => p.presentation) || [];
                     if (compPresentations.length === 0) {
                         const { data: compLegacy } = await supabase.from('web_competidor').select('presentation')
                             .eq('empresa_id', empresa.id).is('linea_id', null).order('presentation');
-                        compPresentations = compLegacy?.map(p=>p.presentation) || [];
+                        compPresentations = compLegacy?.map(p => p.presentation) || [];
                     }
 
-                    const { data: myData } = await supabase.from('web_myproductos').select('presentation')
-                        .eq('empresa_id', empresa.id).eq('linea_id', linea.id).order('presentation');
-                    let myPresentations = myData?.map(p=>p.presentation) || [];
+                    // ── Mis productos: primero buscar asignaciones del cliente ──
+                    // Si hay un comercio ya seleccionado, intentar filtrar por sus asignaciones
+                    let myPresentations = [];
+                    const clienteNombre = newItem.trade?.trim();
+
+                    if (clienteNombre) {
+                        // Resolver el id del cliente por nombre
+                        const { data: clienteData } = await supabase
+                            .from('web_clientes')
+                            .select('id')
+                            .eq('empresa_id', empresa.id)
+                            .eq('trade_name', clienteNombre)
+                            .maybeSingle();
+
+                        if (clienteData?.id) {
+                            // Buscar presentaciones asignadas a ese comercio para esta línea
+                            const { data: asigData } = await supabase
+                                .from('web_cliente_productos')
+                                .select('web_myproductos!web_cliente_productos_producto_id_fkey(presentation)')
+                                .eq('empresa_id', empresa.id)
+                                .eq('cliente_id', clienteData.id)
+                                .eq('activa', true)
+                                .or(`linea_id.eq.${linea.id},linea_id.is.null`);
+
+                            if (asigData && asigData.length > 0) {
+                                myPresentations = asigData
+                                    .map(r => r.web_myproductos?.presentation)
+                                    .filter(Boolean)
+                                    .sort();
+                            }
+                        }
+                    }
+
+                    // Si no hay asignaciones por cliente → usar catálogo por línea (comportamiento anterior)
                     if (myPresentations.length === 0) {
-                        const { data: myLegacy } = await supabase.from('web_myproductos').select('presentation')
-                            .eq('empresa_id', empresa.id).is('linea_id', null).order('presentation');
-                        myPresentations = myLegacy?.map(p=>p.presentation) || [];
+                        const { data: myData } = await supabase.from('web_myproductos').select('presentation')
+                            .eq('empresa_id', empresa.id).eq('linea_id', linea.id).order('presentation');
+                        myPresentations = myData?.map(p => p.presentation) || [];
+
+                        // Fallback final a legado (linea_id NULL)
+                        if (myPresentations.length === 0) {
+                            const { data: myLegacy } = await supabase.from('web_myproductos').select('presentation')
+                                .eq('empresa_id', empresa.id).is('linea_id', null).order('presentation');
+                            myPresentations = myLegacy?.map(p => p.presentation) || [];
+                        }
                     }
 
                     const { data: estadosData } = await supabase.from('web_estados').select('id, nombre').order('nombre');
@@ -756,15 +859,15 @@
 
                     setPresentationsCompetidor(compPresentations);
                     setPresentationsMy(myPresentations);
-                    setEstados(estadosData||[]);
-                    setZonas(zonasData||[]);
+                    setEstados(estadosData || []);
+                    setZonas(zonasData || []);
                 } catch(e) {
                     console.error('Error cargando datos:', e);
                     setError(`Error al cargar datos: ${e.message}`);
                 } finally { setDataLoading(false); }
             };
             fetchData();
-        }, [empresa.id, linea.id]);
+        }, [empresa.id, linea.id, newItem.trade]);
 
         useEffect(() => {
             if (newItem.state) {
@@ -1028,7 +1131,9 @@
                                 <span className="text-gray-700 font-semibold text-sm">Comercio</span>
                                 <ClienteAutocomplete value={newItem.trade}
                                     onChange={value=>setNewItem(prev=>({...prev,trade:value}))}
-                                    empresaId={empresa.id} />
+                                    empresaId={empresa.id}
+                                    promoterId={promoterId}
+                                    lineaId={linea.id} />
                             </label>
                         </div>
 
