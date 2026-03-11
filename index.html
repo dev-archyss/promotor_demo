@@ -9,8 +9,13 @@
     <meta name="theme-color" content="#4F46E5">
     <meta name="description" content="CAPTA — Sistema profesional de captura de precios en campo">
 
-    <!-- ⚠️ Credenciales desde config.js (NO está en git) -->
-    <script src="config.js"></script>
+    <!-- ⚠️ MODO PRUEBAS — credenciales hardcodeadas temporalmente -->
+    <script>
+        window.CAPTA_CONFIG = {
+            supabaseUrl: 'https://djjylikkocemrlsjxscr.supabase.co',
+            supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqanlsaWtrb2NlbXJsc2p4c2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNjUyNDEsImV4cCI6MjA3ODc0MTI0MX0.fnv1BKn_o-PYEAPljG0V3dt3b2Uifwn8EEzkP8Aab3M'
+        };
+    </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
