@@ -73,6 +73,8 @@
             background-clip:text;
         }
         .login-bg { background: linear-gradient(160deg,#EEF2FF 0%,#F5F3FF 50%,#EDE9FE 100%); min-height:100vh; }
+        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        .animate-spin-slow { animation: spin-slow 2s linear infinite; }
         .feature-chip {
             display:inline-flex; align-items:center; gap:5px;
             background:white; border:1px solid rgba(79,70,229,0.15);
@@ -185,7 +187,7 @@
                     .from('empresas')
                     .select('id,nombre,gramaje_base_analisis,unidad_base_analisis,planogram_image')
                     .eq('nombre', nombre.trim())
-                    .eq('clave_acceso', clave.trim())
+                    .eq('clave_pwa', clave.trim())
                     .single();
                 if (error) throw new Error('Empresa o clave incorrecta.');
                 onEmpresaLogin({
@@ -326,7 +328,7 @@
             } catch(err) {
                 console.error(err);
                 setError('Error al iniciar sesión. Verifica tus credenciales.');
-            } finally { setLoading(false); }
+            } finally { setLoading(false); setSaveStep(''); setSaveProgress(0); }
         };
 
         return (
@@ -577,6 +579,15 @@
     };
 
     // ════════════════════════════════════════════════
+    // ── Helper: formato producto con gramaje ─────────────────────────
+    const fmtProd = (p) => {
+        if (!p) return null;
+        const base = p.presentation || '';
+        if (!p.gramaje) return base;
+        const u = p.unidad || '';
+        return `${base} ${p.gramaje}${u}`.trim();
+    };
+
     // ItemRow
     // ════════════════════════════════════════════════
     const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, onToggleOutOfStock, isOutOfStock }) => {
@@ -786,6 +797,8 @@
         const [filtZonas, setFiltZonas]   = useState([]);
         const [dataLoading, setDataLoading] = useState(true);
         const [loading, setLoading]       = useState(false);
+        const [saveStep, setSaveStep]     = useState('');
+        const [saveProgress, setSaveProgress] = useState(0);
         const [error, setError]           = useState(null);
         const [success, setSuccess]       = useState(null);
         const [geoError, setGeoError]     = useState(null);
@@ -866,13 +879,13 @@
                 setDataLoading(true);
                 try {
                     // Competidor por línea → fallback legado
-                    let { data: cD } = await supabase.from('web_competidor').select('presentation')
+                    let { data: cD } = await supabase.from('web_competidor').select('presentation,gramaje,unidad')
                         .eq('empresa_id',empresa.id).eq('linea_id',linea.id).order('presentation');
-                    let cp = cD?.map(p=>p.presentation)||[];
+                    let cp = cD?.map(p=>fmtProd(p))||[];
                     if (!cp.length) {
-                        const { data: cL } = await supabase.from('web_competidor').select('presentation')
+                        const { data: cL } = await supabase.from('web_competidor').select('presentation,gramaje,unidad')
                             .eq('empresa_id',empresa.id).is('linea_id',null).order('presentation');
-                        cp = cL?.map(p=>p.presentation)||[];
+                        cp = cL?.map(p=>fmtProd(p))||[];
                     }
 
                     // Mis productos — por cliente asignado o línea → fallback legado
@@ -884,21 +897,21 @@
                         if (cd?.id) {
                             const { data: ad } = await supabase
                                 .from('web_cliente_productos')
-                                .select('web_myproductos!web_cliente_productos_producto_id_fkey(presentation)')
+                                .select('web_myproductos!web_cliente_productos_producto_id_fkey(presentation,gramaje,unidad)')
                                 .eq('empresa_id',empresa.id).eq('cliente_id',cd.id).eq('activa',true)
                                 .or(`linea_id.eq.${linea.id},linea_id.is.null`);
-                            if (ad?.length) mp = ad.map(r=>r.web_myproductos?.presentation).filter(Boolean).sort();
+                            if (ad?.length) mp = ad.map(r=>r.web_myproductos?fmtProd(r.web_myproductos):null).filter(Boolean).sort();
                         }
                     }
                     if (!mp.length) {
-                        const { data: mD } = await supabase.from('web_myproductos').select('presentation')
+                        const { data: mD } = await supabase.from('web_myproductos').select('presentation,gramaje,unidad')
                             .eq('empresa_id',empresa.id).eq('linea_id',linea.id).order('presentation');
-                        mp = mD?.map(p=>p.presentation)||[];
+                        mp = mD?.map(p=>fmtProd(p))||[];
                     }
                     if (!mp.length) {
-                        const { data: mL } = await supabase.from('web_myproductos').select('presentation')
+                        const { data: mL } = await supabase.from('web_myproductos').select('presentation,gramaje,unidad')
                             .eq('empresa_id',empresa.id).is('linea_id',null).order('presentation');
-                        mp = mL?.map(p=>p.presentation)||[];
+                        mp = mL?.map(p=>fmtProd(p))||[];
                     }
 
                     const { data: est } = await supabase.from('web_estados').select('id,nombre').order('nombre');
@@ -1014,11 +1027,13 @@
         const handleSave = async (e) => {
             e.preventDefault();
             setLoading(true); setError(null); setSuccess(null); setGeoError(null); setPriceWarning('');
+            setSaveStep('Preparando visita…'); setSaveProgress(5);
 
             if (!isClienteCerrado && !validatePrices([...form.competitoritems,...form.myitems])) { setLoading(false); return; }
             if (!afterPhotos.length) { setError('Debes tomar al menos una foto "Después".'); setLoading(false); return; }
 
             let lat=null, lng=null;
+            setSaveStep('Obteniendo ubicación GPS…'); setSaveProgress(15);
             try {
                 const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
                 lat=pos.coords.latitude; lng=pos.coords.longitude;
@@ -1046,9 +1061,23 @@
                 if (isClienteCerrado&&!comments.trim()) { setError('Para cliente cerrado ingresa un comentario.'); setLoading(false); return; }
 
                 // Subir fotos
+                setSaveStep('Subiendo fotos…'); setSaveProgress(35);
                 const ub=[], ua=[];
-                for (const p of beforePhotos) { const fn=`before_${crypto.randomUUID()}.jpg`; const f=d2f(p,fn); const {error:e}=await supabase.storage.from('visits_photos').upload(`before/${fn}`,f,{cacheControl:'3600',upsert:false}); if(e) throw new Error(`Foto antes: ${e.message}`); ub.push(fn); }
-                for (const p of afterPhotos)  { const fn=`after_${crypto.randomUUID()}.jpg`;  const f=d2f(p,fn); const {error:e}=await supabase.storage.from('visits_photos').upload(`after/${fn}`,f,{cacheControl:'3600',upsert:false});  if(e) throw new Error(`Foto después: ${e.message}`); ua.push(fn); }
+                for (let i=0; i<beforePhotos.length; i++) {
+                    const p=beforePhotos[i]; const fn=`before_${crypto.randomUUID()}.jpg`; const f=d2f(p,fn);
+                    const {error:e}=await supabase.storage.from('visits_photos').upload(`before/${fn}`,f,{cacheControl:'3600',upsert:false});
+                    if(e) throw new Error(`Foto antes: ${e.message}`);
+                    ub.push(fn);
+                    setSaveProgress(35 + Math.round(((i+1)/beforePhotos.length)*25));
+                }
+                setSaveStep('Subiendo fotos después…'); setSaveProgress(60);
+                for (let i=0; i<afterPhotos.length; i++) {
+                    const p=afterPhotos[i]; const fn=`after_${crypto.randomUUID()}.jpg`; const f=d2f(p,fn);
+                    const {error:e}=await supabase.storage.from('visits_photos').upload(`after/${fn}`,f,{cacheControl:'3600',upsert:false});
+                    if(e) throw new Error(`Foto después: ${e.message}`);
+                    ua.push(fn);
+                    setSaveProgress(60 + Math.round(((i+1)/afterPhotos.length)*20));
+                }
 
                 // ── Payload completo para sincronía con Dashboard ─────────────────────
                 const visitData = {
@@ -1095,16 +1124,21 @@
                     our_faces_after:          facesAfterSum||null,
                 };
 
+                setSaveStep('Guardando visita en servidor…'); setSaveProgress(85);
                 if (navigator.onLine) {
                     const { error: ie } = await supabase.from('web_precios').insert([visitData]);
                     if (ie) throw ie;
-                    setSuccess('✅ Visita guardada con éxito.');
+                    setSaveProgress(100); setSaveStep('¡Visita guardada!');
+                    await new Promise(r=>setTimeout(r,800));
+                    setSuccess('✅ ¡Visita guardada con éxito!');
                     resetForm();
                 } else {
                     visitData.id = crypto.randomUUID();
                     const db = await openDB();
                     const tx = db.transaction('pendientes','readwrite');
                     tx.objectStore('pendientes').add(visitData);
+                    setSaveProgress(100); setSaveStep('Guardado offline');
+                    await new Promise(r=>setTimeout(r,800));
                     setSuccess('✅ Guardado offline — se sincronizará al conectar.');
                     resetForm();
                 }
@@ -1118,6 +1152,44 @@
 
         return (
             <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-gray-100 pb-8">
+
+                {/* ── Overlay guardando ── */}
+                {loading && saveStep && (
+                    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-indigo-900/90 backdrop-blur-sm px-8">
+                        {/* Ícono animado */}
+                        <div className="relative w-24 h-24 mb-6">
+                            <svg className="animate-spin-slow" viewBox="0 0 100 100" width="96" height="96">
+                                <circle cx="50" cy="50" r="44" fill="none" stroke="#4338ca" strokeWidth="8"/>
+                                <circle cx="50" cy="50" r="44" fill="none" stroke="#818cf8" strokeWidth="8"
+                                    strokeDasharray="276" strokeDashoffset={276 - (276 * saveProgress / 100)}
+                                    strokeLinecap="round" transform="rotate(-90 50 50)"
+                                    style={{transition:'stroke-dashoffset 0.4s ease'}}/>
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-white font-black text-xl">{saveProgress}%</span>
+                            </div>
+                        </div>
+                        {/* Texto del paso */}
+                        <p className="text-white font-bold text-lg text-center mb-2">{saveStep}</p>
+                        <p className="text-indigo-300 text-sm text-center">Por favor no cierres la app…</p>
+                        {/* Barra de progreso */}
+                        <div className="w-full max-w-xs mt-6 bg-indigo-800 rounded-full h-2.5 overflow-hidden">
+                            <div className="bg-indigo-400 h-full rounded-full transition-all duration-500"
+                                style={{width: `${saveProgress}%`}}/>
+                        </div>
+                        {/* Pasos */}
+                        <div className="mt-5 flex gap-3">
+                            {[{label:'GPS',pct:15},{label:'Fotos',pct:60},{label:'Servidor',pct:85},{label:'Listo',pct:100}].map(step=>(
+                                <div key={step.label} className="flex flex-col items-center gap-1">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${saveProgress>=step.pct?'bg-green-400 text-white':'bg-indigo-700 text-indigo-400'}`}>
+                                        {saveProgress>=step.pct?'✓':'·'}
+                                    </div>
+                                    <span className={`text-xs ${saveProgress>=step.pct?'text-green-300':'text-indigo-500'}`}>{step.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* ── Topbar ── */}
                 <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 px-4 py-2.5 flex items-center justify-between shadow-sm">
