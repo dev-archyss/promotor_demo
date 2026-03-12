@@ -588,6 +588,68 @@
         return `${base} ${p.gramaje}${u}`.trim();
     };
 
+    // ════════════════════════════════════════════════
+    // SearchableSelect — buscador de productos
+    // ════════════════════════════════════════════════
+    const SearchableSelect = ({ value, onChange, options, placeholder='-- Buscar producto --', disabled=false }) => {
+        const [open, setOpen]   = useState(false);
+        const [query, setQuery] = useState('');
+        const wrapRef = useRef(null);
+
+        const filtered = query.length > 0
+            ? options.filter(o => o.toLowerCase().includes(query.toLowerCase())).slice(0,40)
+            : options.slice(0,40);
+
+        useEffect(() => {
+            const handler = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+            document.addEventListener('mousedown', handler);
+            return () => document.removeEventListener('mousedown', handler);
+        }, []);
+
+        const select = (opt) => { onChange(opt); setOpen(false); setQuery(''); };
+
+        return (
+            <div ref={wrapRef} className="relative w-full sm:w-52" style={{zIndex: open?100:1}}>
+                <button type="button" disabled={disabled}
+                    onClick={() => { if(!disabled){ setOpen(o=>!o); setQuery(''); }}}
+                    className={`w-full p-2.5 border rounded-lg input-focus text-sm text-left flex justify-between items-center gap-1
+                        ${disabled?'bg-gray-100 text-gray-400 cursor-not-allowed':'bg-white border-gray-200 hover:border-indigo-300'}
+                        ${value?'text-gray-800 font-medium':'text-gray-400'}`}>
+                    <span className="truncate">{value || placeholder}</span>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`flex-shrink-0 transition-transform ${open?'rotate-180':''}`}>
+                        <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                </button>
+                {open && (
+                    <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden" style={{maxHeight:260,minWidth:200}}>
+                        <div className="p-2 border-b border-gray-100">
+                            <input autoFocus type="text" value={query} onChange={e=>setQuery(e.target.value)}
+                                placeholder="Buscar…"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-indigo-400"
+                                onClick={e=>e.stopPropagation()}/>
+                        </div>
+                        <div className="overflow-y-auto" style={{maxHeight:200}}>
+                            <div onClick={()=>select('')}
+                                className="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer border-b border-gray-50">
+                                — Sin selección —
+                            </div>
+                            {filtered.length===0
+                                ? <div className="px-3 py-3 text-sm text-gray-400 text-center">Sin resultados</div>
+                                : filtered.map(opt=>(
+                                    <div key={opt} onClick={()=>select(opt)}
+                                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 transition-colors
+                                            ${value===opt?'bg-indigo-50 text-indigo-700 font-semibold':''}`}>
+                                        {opt}
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     // ItemRow
     // ════════════════════════════════════════════════
     const ItemRow = ({ item, type, onChange, onRemove, presentations, currencies, canRemove, errors, setErrors, onToggleOutOfStock, isOutOfStock }) => {
@@ -599,11 +661,12 @@
         const disabled = item.presentation==='SIN STOCK';
         return (
             <div className="flex flex-col sm:flex-row flex-wrap gap-2 mb-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <select value={item.presentation} onChange={e=>onChange(e,type,item.id,'presentation')}
-                    className="w-full sm:w-44 p-2.5 border border-gray-200 rounded-lg input-focus text-sm bg-white" required>
-                    <option value="">-- Presentación --</option>
-                    {presentations.map(p=><option key={p} value={p}>{p}</option>)}
-                </select>
+                <SearchableSelect
+                    value={item.presentation}
+                    onChange={val=>onChange({target:{value:val}},type,item.id,'presentation')}
+                    options={presentations}
+                    placeholder="-- Buscar producto --"
+                    disabled={false}/>
                 <input type="number" name="price" placeholder="Precio" value={item.price}
                     onChange={handleChange} disabled={disabled}
                     className={`w-full sm:w-28 p-2.5 border rounded-lg input-focus text-sm ${errors[item.id]?'border-red-400':'border-gray-200'} ${disabled?'bg-gray-100 cursor-not-allowed':'bg-white'}`}
@@ -615,6 +678,20 @@
                     <option value="">Moneda</option>
                     {currencies.map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
+                {/* Caras y metros — aplica a AMBOS tipos */}
+                {!disabled && (
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <input type="number" name="faces_before" placeholder="Caras antes" value={item.faces_before??''}
+                            onChange={handleChange} disabled={disabled||(type==='myitems'&&isOutOfStock)}
+                            className={`w-full sm:w-24 p-2.5 border border-indigo-100 bg-indigo-50 rounded-lg input-focus text-sm text-center placeholder-indigo-300 ${(disabled||(type==='myitems'&&isOutOfStock))?'opacity-50 cursor-not-allowed':''}`}/>
+                        <input type="number" name="faces_after" placeholder="Caras después" value={item.faces_after??''}
+                            onChange={handleChange} disabled={disabled}
+                            className="w-full sm:w-24 p-2.5 border border-indigo-100 bg-indigo-50 rounded-lg input-focus text-sm text-center placeholder-indigo-300"/>
+                        <input type="number" name="shelf_meters" placeholder="Metros" step="0.1" value={item.shelf_meters??''}
+                            onChange={handleChange} disabled={disabled}
+                            className="w-full sm:w-20 p-2.5 border border-purple-100 bg-purple-50 rounded-lg input-focus text-sm text-center placeholder-purple-300"/>
+                    </div>
+                )}
                 {type==='myitems' && (
                     <>
                         <input type="number" name="stock_shelf" placeholder="Anaquel" value={item.stock_shelf??''}
@@ -625,13 +702,6 @@
                             onChange={handleChange} disabled={isOutOfStock||disabled}
                             className={`w-full sm:w-20 p-2.5 border border-gray-200 rounded-lg input-focus text-sm ${(isOutOfStock||disabled)?'bg-gray-100 cursor-not-allowed':'bg-white'}`}
                             required={!isOutOfStock&&!disabled}/>
-                        <input type="number" name="faces_before" placeholder="Caras antes" value={item.faces_before??''}
-                            onChange={handleChange} disabled={disabled||isOutOfStock}
-                            className={`w-full sm:w-24 p-2.5 border border-gray-200 rounded-lg input-focus text-sm text-center ${(disabled||isOutOfStock)?'bg-gray-100 cursor-not-allowed':'bg-white'}`}/>
-                        <input type="number" name="faces_after" placeholder="Caras después" value={item.faces_after??''}
-                            onChange={handleChange} disabled={disabled}
-                            className={`w-full sm:w-24 p-2.5 border border-gray-200 rounded-lg input-focus text-sm text-center ${disabled?'bg-gray-100 cursor-not-allowed':'bg-white'}`}
-                            required={!disabled}/>
                         <div className="flex items-center sm:w-28 pt-1 sm:pt-0">
                             <label className="flex items-center text-xs text-gray-600 cursor-pointer gap-1">
                                 <input type="checkbox" checked={isOutOfStock} onChange={()=>onToggleOutOfStock(item.id)}
@@ -818,7 +888,7 @@
         const makeEmpty = () => ({
             state: initialState||'', zone: initialZone||'', trade: '',
             shelfMeters: '',  // ← metros lineales del anaquel
-            competitoritems: [{ id:crypto.randomUUID(), presentation:'', price:'', currency:'' }],
+            competitoritems: [{ id:crypto.randomUUID(), presentation:'', price:'', currency:'', faces_before:'', faces_after:'', shelf_meters:'' }],
             myitems:         [{ id:crypto.randomUUID(), presentation:'', price:'', currency:'', stock_shelf:'', stock_warehouse:'', faces_before:'', faces_after:'' }],
             totalFacesBefore:'', our_faces_before_manual:'', totalFaces:''
         });
@@ -981,7 +1051,8 @@
                     const u={...item,[field]:value};
                     if (field==='presentation'&&value==='SIN STOCK') {
                         u.price=''; u.currency='';
-                        if(type==='myitems'){u.stock_shelf='';u.stock_warehouse='';u.faces_before='';u.faces_after='';}
+                        u.faces_before='';u.faces_after='';u.shelf_meters='';
+                        if(type==='myitems'){u.stock_shelf='';u.stock_warehouse='';}
                     }
                     return u;
                 })
@@ -991,7 +1062,11 @@
             if (priceErrors[id]) { setPriceErrors(p=>{const n={...p};delete n[id];return n;}); setPriceWarning(''); }
         };
 
-        const addItem = type => setForm(p=>({...p,[type]:[...p[type],{id:crypto.randomUUID(),presentation:'',price:'',currency:'',stock_shelf:'',stock_warehouse:'',faces_before:'',faces_after:''}]}));
+        const addItem = type => {
+            const base = {id:crypto.randomUUID(),presentation:'',price:'',currency:'',faces_before:'',faces_after:'',shelf_meters:''};
+            if(type==='myitems') Object.assign(base,{stock_shelf:'',stock_warehouse:''});
+            setForm(p=>({...p,[type]:[...p[type],base]}));
+        };
         const removeItem = (type,id) => {
             setForm(p=>({...p,[type]:p[type].filter(i=>i.id!==id)}));
             setPriceErrors(p=>{const n={...p};delete n[id];return n;});
@@ -1094,9 +1169,12 @@
                     shelf_meters: form.shelfMeters ? parseFloat(form.shelfMeters) : null,
 
                     competitoritems: validComp.map(i=>({
-                        presentation: i.presentation,
-                        price:    i.presentation==='SIN STOCK'?null:parseFloat(i.price),
-                        currency: i.presentation==='SIN STOCK'?null:i.currency
+                        presentation:  i.presentation,
+                        price:         i.presentation==='SIN STOCK'?null:parseFloat(i.price),
+                        currency:      i.presentation==='SIN STOCK'?null:i.currency,
+                        faces_before:  i.presentation==='SIN STOCK'?null:(i.faces_before!==''?parseInt(i.faces_before):null),
+                        faces_after:   i.presentation==='SIN STOCK'?null:(i.faces_after!==''?parseInt(i.faces_after):null),
+                        shelf_meters:  i.presentation==='SIN STOCK'?null:(i.shelf_meters!==''?parseFloat(i.shelf_meters):null),
                     })),
                     myitems: validMy.map(i=>({
                         presentation:  i.presentation,
