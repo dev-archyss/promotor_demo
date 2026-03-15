@@ -185,16 +185,19 @@
             try {
                 const { data, error } = await supabase
                     .from('empresas')
-                    .select('id,nombre,gramaje_base_analisis,unidad_base_analisis,planogram_image')
+                    .select('id,nombre,gramaje_base_analisis,unidad_base_analisis,planogram_image,modulos_activos')
                     .eq('nombre', nombre.trim())
                     .eq('clave_pwa', clave.trim())
                     .single();
                 if (error) throw new Error('Empresa o clave incorrecta.');
+                const rawMods = data.modulos_activos;
+                const modulos = rawMods ? (typeof rawMods === 'string' ? JSON.parse(rawMods) : rawMods) : {};
                 onEmpresaLogin({
                     id: data.id, nombre: data.nombre,
                     gramajeBase: data.gramaje_base_analisis,
                     unidadBase: data.unidad_base_analisis,
-                    planogramImage: data.planogram_image
+                    planogramImage: data.planogram_image,
+                    modulos: modulos
                 });
             } catch(err) { setError(err.message || 'Error al conectar. Verifica tu red.'); }
             finally { setLoading(false); }
@@ -888,6 +891,7 @@
         const makeEmpty = () => ({
             state: initialState||'', zone: initialZone||'', trade: '',
             shelfMeters: '',  // ← metros lineales del anaquel
+            espaciosAdicionales: [],  // ← Torre, Cabezales, Paletas
             competitoritems: [{ id:crypto.randomUUID(), presentation:'', price:'', currency:'', faces_before:'', faces_after:'', shelf_meters:'' }],
             myitems:         [{ id:crypto.randomUUID(), presentation:'', price:'', currency:'', stock_shelf:'', stock_warehouse:'', faces_before:'', faces_after:'' }],
             totalFacesBefore:'', our_faces_before_manual:'', totalFaces:''
@@ -1194,6 +1198,9 @@
                     before_photos:   ub,
                     after_photos:    ua,
 
+                    // Espacios adicionales
+                    espacios_adicionales: form.espaciosAdicionales && form.espaciosAdicionales.length > 0 ? form.espaciosAdicionales : null,
+
                     // Caras — todos los campos que usa el Dashboard
                     total_faces_before:       form.totalFacesBefore?parseInt(form.totalFacesBefore):null,
                     our_faces_before_manual:  form.our_faces_before_manual?parseInt(form.our_faces_before_manual):null,
@@ -1399,6 +1406,66 @@
                                             className="w-full p-2.5 border border-gray-200 rounded-xl input-focus text-sm"/>
                                     </div>
                                 </div>
+
+                                {/* ── ESPACIOS ADICIONALES — visible solo si módulo activo ── */}
+                                {(empresa.modulos && empresa.modulos.metros_espacios !== false) && (
+                                <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-4 mt-2">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg">🏪</span>
+                                            <div>
+                                                <p className="font-bold text-violet-700 text-sm">Espacios adicionales</p>
+                                                <p className="text-xs text-violet-500">Torres, Cabezales, Paletas en el punto de venta</p>
+                                            </div>
+                                        </div>
+                                        <button type="button"
+                                            onClick={()=>{
+                                                const tipos = ['Torre','Cabezal','Paleta'];
+                                                const usado = (form.espaciosAdicionales||[]).map(e=>e.tipo);
+                                                const disp  = tipos.find(t=>!usado.includes(t)) || 'Torre';
+                                                setForm(p=>({...p, espaciosAdicionales:[...(p.espaciosAdicionales||[]),{id:crypto.randomUUID(),tipo:disp,unidades:''}]}));
+                                            }}
+                                            className="flex items-center gap-1 bg-violet-600 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-sm">
+                                            + Agregar
+                                        </button>
+                                    </div>
+
+                                    {(form.espaciosAdicionales||[]).length === 0 && (
+                                        <p className="text-xs text-violet-400 text-center py-2">Sin espacios adicionales registrados. Toca + Agregar.</p>
+                                    )}
+
+                                    <div className="flex flex-col gap-2">
+                                    {(form.espaciosAdicionales||[]).map((esp, idx)=>(
+                                        <div key={esp.id} className="flex items-center gap-2 bg-white border border-violet-100 rounded-xl p-2 shadow-sm">
+                                            <select value={esp.tipo}
+                                                onChange={e=>{
+                                                    const v=e.target.value;
+                                                    setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.map(x=>x.id===esp.id?{...x,tipo:v}:x)}));
+                                                }}
+                                                className="flex-1 p-2 border border-violet-200 rounded-lg text-sm text-violet-800 font-semibold bg-violet-50">
+                                                <option value="Torre">🗼 Torre</option>
+                                                <option value="Cabezal">🏷️ Cabezal</option>
+                                                <option value="Paleta">🪵 Paleta</option>
+                                            </select>
+                                            <div className="flex items-center gap-1">
+                                                <input type="number" min="1" placeholder="Und." value={esp.unidades}
+                                                    onChange={e=>{
+                                                        const v=e.target.value;
+                                                        setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.map(x=>x.id===esp.id?{...x,unidades:v}:x)}));
+                                                    }}
+                                                    className="w-20 p-2 border border-violet-200 rounded-lg text-sm text-center input-focus"/>
+                                                <span className="text-xs text-violet-500">und</span>
+                                            </div>
+                                            <button type="button"
+                                                onClick={()=>setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.filter(x=>x.id!==esp.id)}))}
+                                                className="text-red-400 hover:text-red-600 p-1 rounded-lg">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))}
+                                    </div>
+                                </div>
+                                )}
                                 <button type="button" onClick={()=>{
                                     if (!beforePhotos.length) { setError('Debes tomar al menos una foto "Antes".'); return; }
                                     setError(null); setVisitStarted(true);
