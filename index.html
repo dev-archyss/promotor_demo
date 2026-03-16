@@ -1407,63 +1407,77 @@
                                     </div>
                                 </div>
 
-                                {/* ── ESPACIOS ADICIONALES — visible solo si módulo activo ── */}
+                                {/* ── ESPACIOS ADICIONALES ── */}
                                 {(empresa.modulos && empresa.modulos.metros_espacios !== false) && (
                                 <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-4 mt-2">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg">🏪</span>
-                                            <div>
-                                                <p className="font-bold text-violet-700 text-sm">Espacios adicionales</p>
-                                                <p className="text-xs text-violet-500">Torres, Cabezales, Paletas en el punto de venta</p>
-                                            </div>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-lg">🏪</span>
+                                        <div>
+                                            <p className="font-bold text-violet-700 text-sm">Espacios adicionales</p>
+                                            <p className="text-xs text-violet-500">Selecciona el tipo y cantidad</p>
                                         </div>
-                                        <button type="button"
-                                            onClick={()=>{
-                                                const tipos = ['Torre','Cabezal','Paleta'];
-                                                const usado = (form.espaciosAdicionales||[]).map(e=>e.tipo);
-                                                const disp  = tipos.find(t=>!usado.includes(t)) || 'Torre';
-                                                setForm(p=>({...p, espaciosAdicionales:[...(p.espaciosAdicionales||[]),{id:crypto.randomUUID(),tipo:disp,unidades:''}]}));
-                                            }}
-                                            className="flex items-center gap-1 bg-violet-600 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-sm">
-                                            + Agregar
-                                        </button>
                                     </div>
 
+                                    {/* Selector de tipo — 4 botones visuales */}
+                                    <div className="grid grid-cols-4 gap-2 mb-3">
+                                        {[
+                                            {tipo:'Torre',     emoji:'🗼', color:'bg-violet-100 border-violet-300 text-violet-700'},
+                                            {tipo:'Cabezal',   emoji:'🏷️', color:'bg-cyan-100 border-cyan-300 text-cyan-700'},
+                                            {tipo:'Paleta',    emoji:'🪵', color:'bg-amber-100 border-amber-300 text-amber-700'},
+                                            {tipo:'Exhibición',emoji:'🛍️', color:'bg-emerald-100 border-emerald-300 text-emerald-700'},
+                                        ].map(({tipo, emoji, color})=>(
+                                            <button key={tipo} type="button"
+                                                onClick={()=>setForm(p=>({
+                                                    ...p,
+                                                    espaciosAdicionales:[
+                                                        ...(p.espaciosAdicionales||[]),
+                                                        {id:crypto.randomUUID(), tipo, unidades:''}
+                                                    ]
+                                                }))}
+                                                className={`flex flex-col items-center justify-center gap-1 border-2 rounded-xl py-3 px-1 font-semibold text-xs transition active:scale-95 ${color}`}>
+                                                <span className="text-2xl">{emoji}</span>
+                                                <span>{tipo}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Lista de espacios agregados */}
                                     {(form.espaciosAdicionales||[]).length === 0 && (
-                                        <p className="text-xs text-violet-400 text-center py-2">Sin espacios adicionales registrados. Toca + Agregar.</p>
+                                        <p className="text-xs text-violet-400 text-center py-2 border border-dashed border-violet-200 rounded-xl">
+                                            Toca un tipo para agregarlo
+                                        </p>
                                     )}
 
                                     <div className="flex flex-col gap-2">
-                                    {(form.espaciosAdicionales||[]).map((esp, idx)=>(
-                                        <div key={esp.id} className="flex items-center gap-2 bg-white border border-violet-100 rounded-xl p-2 shadow-sm">
-                                            <select value={esp.tipo}
-                                                onChange={e=>{
-                                                    const v=e.target.value;
-                                                    setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.map(x=>x.id===esp.id?{...x,tipo:v}:x)}));
-                                                }}
-                                                className="flex-1 p-2 border border-violet-200 rounded-lg text-sm text-violet-800 font-semibold bg-violet-50">
-                                                <option value="Torre">🗼 Torre</option>
-                                                <option value="Cabezal">🏷️ Cabezal</option>
-                                                <option value="Paleta">🪵 Paleta</option>
-                                                <option value="Exhibición">🛍️ Exhibición</option>
-                                            </select>
+                                    {(form.espaciosAdicionales||[]).map((esp)=>{
+                                        const cfg = {
+                                            Torre:      {emoji:'🗼', cls:'bg-violet-50 border-violet-200'},
+                                            Cabezal:    {emoji:'🏷️', cls:'bg-cyan-50 border-cyan-200'},
+                                            Paleta:     {emoji:'🪵', cls:'bg-amber-50 border-amber-200'},
+                                            Exhibición: {emoji:'🛍️', cls:'bg-emerald-50 border-emerald-200'},
+                                        }[esp.tipo] || {emoji:'📦', cls:'bg-gray-50 border-gray-200'};
+                                        return (
+                                        <div key={esp.id} className={`flex items-center gap-3 border rounded-xl p-2.5 shadow-sm ${cfg.cls}`}>
+                                            <span className="text-xl w-8 text-center">{cfg.emoji}</span>
+                                            <span className="flex-1 text-sm font-bold text-gray-700">{esp.tipo}</span>
                                             <div className="flex items-center gap-1">
-                                                <input type="number" min="1" placeholder="Und." value={esp.unidades}
-                                                    onChange={e=>{
-                                                        const v=e.target.value;
-                                                        setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.map(x=>x.id===esp.id?{...x,unidades:v}:x)}));
-                                                    }}
-                                                    className="w-20 p-2 border border-violet-200 rounded-lg text-sm text-center input-focus"/>
-                                                <span className="text-xs text-violet-500">und</span>
+                                                <button type="button"
+                                                    onClick={()=>setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.map(x=>x.id===esp.id?{...x,unidades:String(Math.max(1,(parseInt(x.unidades)||0)-1))}:x)}))}
+                                                    className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-lg font-bold text-gray-500 flex items-center justify-center">−</button>
+                                                <input type="number" min="1" value={esp.unidades}
+                                                    onChange={e=>{const v=e.target.value;setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.map(x=>x.id===esp.id?{...x,unidades:v}:x)}));}}
+                                                    className="w-14 p-1.5 border border-gray-200 rounded-lg text-sm text-center font-bold input-focus bg-white"/>
+                                                <button type="button"
+                                                    onClick={()=>setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.map(x=>x.id===esp.id?{...x,unidades:String((parseInt(x.unidades)||0)+1)}:x)}))}
+                                                    className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-lg font-bold text-gray-500 flex items-center justify-center">+</button>
+                                                <span className="text-xs text-gray-400 ml-1">und</span>
                                             </div>
                                             <button type="button"
                                                 onClick={()=>setForm(p=>({...p,espaciosAdicionales:p.espaciosAdicionales.filter(x=>x.id!==esp.id)}))}
-                                                className="text-red-400 hover:text-red-600 p-1 rounded-lg">
-                                                ✕
-                                            </button>
+                                                className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-red-400 flex items-center justify-center text-sm">✕</button>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                     </div>
                                 </div>
                                 )}
