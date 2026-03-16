@@ -661,7 +661,7 @@
             onChange({target:{value}}, type, item.id, name);
             if (errors[item.id]) setErrors(prev=>{const n={...prev};delete n[item.id];return n;});
         };
-        const disabled = item.presentation==='SIN STOCK';
+        const disabled = item.presentation==='SIN STOCK' || (type==='competitoritems' && isOutOfStock);
         return (
             <div className="flex flex-col sm:flex-row flex-wrap gap-2 mb-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
                 <SearchableSelect
@@ -713,6 +713,18 @@
                             </label>
                         </div>
                     </>
+                )}
+                {type==='competitoritems' && (
+                    <div className="flex items-center pt-1 sm:pt-0">
+                        <label className={`flex items-center gap-1.5 cursor-pointer px-3 py-2 rounded-lg border text-xs font-semibold transition-all
+                            ${isOutOfStock
+                                ? 'bg-red-50 border-red-300 text-red-600'
+                                : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-red-50 hover:border-red-200 hover:text-red-500'}`}>
+                            <input type="checkbox" checked={isOutOfStock} onChange={()=>onToggleOutOfStock(item.id)}
+                                className="h-3.5 w-3.5 text-red-500 border-gray-300 rounded"/>
+                            Sin stock
+                        </label>
+                    </div>
                 )}
                 {canRemove && (
                     <button type="button" onClick={()=>onRemove(type,item.id)}
@@ -878,7 +890,8 @@
         const [comments, setComments]     = useState('');
         const [priceErrors, setPriceErrors] = useState({});
         const [priceWarning, setPriceWarning] = useState('');
-        const [outOfStock, setOutOfStock] = useState(new Set());
+        const [outOfStock, setOutOfStock]         = useState(new Set());  // myitems
+        const [outOfStockComp, setOutOfStockComp] = useState(new Set());  // competitoritems
         const [isMayorista, setIsMayorista]     = useState(false);
         const [isClienteCerrado, setIsClienteCerrado] = useState(false);
         const [beforePhotos, setBeforePhotos] = useState([]);
@@ -1076,7 +1089,8 @@
             setPriceErrors(p=>{const n={...p};delete n[id];return n;});
             if(type==='myitems') setOutOfStock(p=>{const s=new Set(p);s.delete(id);return s;});
         };
-        const toggleOOS = id => setOutOfStock(p=>{const s=new Set(p);s.has(id)?s.delete(id):s.add(id);return s;});
+        const toggleOOS     = id => setOutOfStock(p=>{const s=new Set(p);s.has(id)?s.delete(id):s.add(id);return s;});
+        const toggleOOSComp = id => setOutOfStockComp(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
 
         const validatePrices = items => {
             const errs={};
@@ -1097,7 +1111,7 @@
 
         const resetForm = () => {
             setComments(''); setIsMayorista(false); setIsClienteCerrado(false);
-            setForm(makeEmpty()); setOutOfStock(new Set());
+            setForm(makeEmpty()); setOutOfStock(new Set()); setOutOfStockComp(new Set());
             setBeforePhotos([]); setAfterPhotos([]);
             localStorage.removeItem(STORAGE_KEY);
             setVisitStarted(false);
@@ -1133,7 +1147,7 @@
 
                 let validComp=[], validMy=[];
                 if (!isClienteCerrado) {
-                    validComp = form.competitoritems.filter(i=>i.presentation&&(i.presentation==='SIN STOCK'||(i.price&&i.currency)));
+                    validComp = form.competitoritems.filter(i=>i.presentation&&(outOfStockComp.has(i.id)||i.presentation==='SIN STOCK'||(i.price&&i.currency)));
                     validMy   = form.myitems.filter(i=>i.presentation&&(i.presentation==='SIN STOCK'||(i.price&&i.currency)));
                     if (!validComp.length&&!validMy.length) { setError('Agrega al menos un ítem completo.'); setLoading(false); return; }
                 }
@@ -1172,14 +1186,18 @@
                     // ← CAMPO CLAVE para metros_espacios.html del Dashboard
                     shelf_meters: form.shelfMeters ? parseFloat(form.shelfMeters) : null,
 
-                    competitoritems: validComp.map(i=>({
-                        presentation:  i.presentation,
-                        price:         i.presentation==='SIN STOCK'?null:parseFloat(i.price),
-                        currency:      i.presentation==='SIN STOCK'?null:i.currency,
-                        faces_before:  i.presentation==='SIN STOCK'?null:(i.faces_before!==''?parseInt(i.faces_before):null),
-                        faces_after:   i.presentation==='SIN STOCK'?null:(i.faces_after!==''?parseInt(i.faces_after):null),
-                        shelf_meters:  i.presentation==='SIN STOCK'?null:(i.shelf_meters!==''?parseFloat(i.shelf_meters):null),
-                    })),
+                    competitoritems: validComp.map(i=>{
+                        const sinStock = outOfStockComp.has(i.id) || i.presentation==='SIN STOCK';
+                        return {
+                            presentation:  i.presentation,
+                            sin_stock:     sinStock ? true : undefined,
+                            price:         sinStock?null:parseFloat(i.price),
+                            currency:      sinStock?null:i.currency,
+                            faces_before:  sinStock?null:(i.faces_before!==''?parseInt(i.faces_before):null),
+                            faces_after:   sinStock?null:(i.faces_after!==''?parseInt(i.faces_after):null),
+                            shelf_meters:  sinStock?null:(i.shelf_meters!==''?parseFloat(i.shelf_meters):null),
+                        };
+                    }),
                     myitems: validMy.map(i=>({
                         presentation:  i.presentation,
                         price:         i.presentation==='SIN STOCK'?null:parseFloat(i.price),
@@ -1517,7 +1535,8 @@
                                                     onChange={handleItemChange} onRemove={removeItem}
                                                     presentations={presComp} currencies={['BS','$','Pesos']}
                                                     canRemove={form.competitoritems.length>1}
-                                                    errors={priceErrors} setErrors={setPriceErrors}/>
+                                                    errors={priceErrors} setErrors={setPriceErrors}
+                                                    onToggleOutOfStock={toggleOOSComp} isOutOfStock={outOfStockComp.has(item.id)}/>
                                             ))}
                                             <div className="flex justify-end mt-2">
                                                 <button type="button" onClick={()=>addItem('competitoritems')}
