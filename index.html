@@ -304,29 +304,17 @@
             e.preventDefault();
             setLoading(true); setError(null);
             try {
+                // Un solo fetch con join — mucho más rápido
                 const { data: pd, error: pe } = await supabase
                     .from('web_promotores')
-                    .select('promoter_id,promoter_name,estado_id,password,zona_id')
+                    .select('promoter_id,promoter_name,estado_id,password,zona_id,web_estados(nombre),web_zonas(nombre)')
                     .eq('promoter_id', promoterId.trim())
                     .eq('empresa_id', empresa.id)
                     .single();
                 if (pe || !pd) { setError('ID de promotor no encontrado.'); setLoading(false); return; }
                 if (pd.password !== password) { setError('Contraseña incorrecta.'); setLoading(false); return; }
-
-                let estadoNombre = '';
-                if (pd.estado_id) {
-                    const { data: ed } = await supabase.from('web_estados').select('nombre').eq('id', pd.estado_id).single();
-                    estadoNombre = ed?.nombre || '';
-                }
-                let zonaNombre = '';
-                if (pd.zona_id) {
-                    const { data: zd } = await supabase.from('web_zonas').select('nombre').eq('id', pd.zona_id).single();
-                    if (zd) zonaNombre = zd.nombre.replace('Zona ','');
-                } else {
-                    const zn = promoterId.replace('promotor_','').replace(/_/g,'-');
-                    const { data: zf } = await supabase.from('web_zonas').select('nombre').ilike('nombre',`%${zn}%`).single();
-                    if (zf) zonaNombre = zf.nombre.replace('Zona ','');
-                }
+                const estadoNombre = pd.web_estados?.nombre || '';
+                const zonaNombre  = (pd.web_zonas?.nombre || '').replace('Zona ','');
                 onPromotorLogin(pd.promoter_id, pd.promoter_name, estadoNombre, zonaNombre);
             } catch(err) {
                 console.error(err);
@@ -965,44 +953,65 @@
             const load = async () => {
                 setDataLoading(true);
                 try {
-                    // Competidor por línea → fallback legado
-                    let { data: cD } = await supabase.from('web_competidor').select('presentation,gramaje,unidad')
-                        .eq('empresa_id',empresa.id).eq('linea_id',linea.id).order('presentation');
-                    let cp = cD?.map(p=>fmtProd(p))||[];
-                    if (!cp.length) {
-                        const { data: cL } = await supabase.from('web_competidor').select('presentation,gramaje,unidad')
-                            .eq('empresa_id',empresa.id).is('linea_id',null).order('presentation');
-                        cp = cL?.map(p=>fmtProd(p))||[];
+                    // ── Cache en memoria por sesión ──
+                    const compCacheKey = `_cp_${empresa.id}_${linea.id}`;
+                    let cp = window[compCacheKey];
+                    if (!cp) {
+                        let { data: cD } = await supabase.from('web_competidor').select('presentation,gramaje,unidad')
+                            .eq('empresa_id',empresa.id).eq('linea_id',linea.id).order('presentation');
+                        cp = cD?.map(p=>fmtProd(p))||[];
+                        if (!cp.length) {
+                            const { data: cL } = await supabase.from('web_competidor').select('presentation,gramaje,unidad')
+                                .eq('empresa_id',empresa.id).is('linea_id',null).order('presentation');
+                            cp = cL?.map(p=>fmtProd(p))||[];
+                        }
+                        if (cp.length) window[compCacheKey] = cp;
                     }
 
-                    // Mis productos — por cliente asignado o línea → fallback legado
+                    // Mis productos — cache por cliente+línea
                     let mp = [];
                     const cn = form.trade?.trim();
-                    if (cn) {
-                        const { data: cd } = await supabase.from('web_clientes').select('id')
-                            .eq('empresa_id',empresa.id).eq('trade_name',cn).maybeSingle();
-                        if (cd?.id) {
-                            const { data: ad } = await supabase
-                                .from('web_cliente_productos')
-                                .select('web_myproductos!web_cliente_productos_producto_id_fkey(presentation,gramaje,unidad)')
-                                .eq('empresa_id',empresa.id).eq('cliente_id',cd.id).eq('activa',true)
-                                .or(`linea_id.eq.${linea.id},linea_id.is.null`);
-                            if (ad?.length) mp = ad.map(r=>r.web_myproductos?fmtProd(r.web_myproductos):null).filter(Boolean).sort();
+                    const myProdKey = `_mp_${empresa.id}_${linea.id}_${cn||''}`;
+                    mp = window[myProdKey];
+                    if (!mp) {
+                        mp = [];
+                        if (cn) {
+                            const { data: cd } = await supabase.from('web_clientes').select('id')
+                                .eq('empresa_id',empresa.id).eq('trade_name',cn).maybeSingle();
+                            if (cd?.id) {
+                                const { data: ad } = await supabase
+                                    .from('web_cliente_productos')
+                                    .select('web_myproductos!web_cliente_productos_producto_id_fkey(presentation,gramaje,unidad)')
+                                    .eq('empresa_id',empresa.id).eq('cliente_id',cd.id).eq('activa',true)
+                                    .or(`linea_id.eq.${linea.id},linea_id.is.null`);
+                                if (ad?.length) mp = ad.map(r=>r.web_myproductos?fmtProd(r.web_myproductos):null).filter(Boolean).sort();
+                            }
                         }
-                    }
-                    if (!mp.length) {
-                        const { data: mD } = await supabase.from('web_myproductos').select('presentation,gramaje,unidad')
-                            .eq('empresa_id',empresa.id).eq('linea_id',linea.id).order('presentation');
-                        mp = mD?.map(p=>fmtProd(p))||[];
-                    }
-                    if (!mp.length) {
-                        const { data: mL } = await supabase.from('web_myproductos').select('presentation,gramaje,unidad')
-                            .eq('empresa_id',empresa.id).is('linea_id',null).order('presentation');
-                        mp = mL?.map(p=>fmtProd(p))||[];
+                        if (!mp.length) {
+                            const { data: mD } = await supabase.from('web_myproductos').select('presentation,gramaje,unidad')
+                                .eq('empresa_id',empresa.id).eq('linea_id',linea.id).order('presentation');
+                            mp = mD?.map(p=>fmtProd(p))||[];
+                        }
+                        if (!mp.length) {
+                            const { data: mL } = await supabase.from('web_myproductos').select('presentation,gramaje,unidad')
+                                .eq('empresa_id',empresa.id).is('linea_id',null).order('presentation');
+                            mp = mL?.map(p=>fmtProd(p))||[];
+                        }
+                        if (mp.length) window[myProdKey] = mp;
                     }
 
-                    const { data: est } = await supabase.from('web_estados').select('id,nombre').order('nombre');
-                    const { data: zon } = await supabase.from('web_zonas').select('id,nombre,estado_id').order('nombre');
+                    // Cache estados y zonas — no cambian en la sesión
+                    let est = window._cachedEstados;
+                    let zon = window._cachedZonas;
+                    if (!est) {
+                        const [estRes, zonRes] = await Promise.all([
+                            supabase.from('web_estados').select('id,nombre').order('nombre'),
+                            supabase.from('web_zonas').select('id,nombre,estado_id').order('nombre')
+                        ]);
+                        est = estRes.data; zon = zonRes.data;
+                        window._cachedEstados = est;
+                        window._cachedZonas   = zon;
+                    }
 
                     setPresComp(cp); setPresMy(mp);
                     setEstados(est||[]); setZonas(zon||[]);
@@ -1651,38 +1660,143 @@
     };
 
     // ════════════════════════════════════════════════
+    // ── Constantes de sesión ──────────────────────────────────────
+    const SESSION_KEY = 'capta_session_v3';
+
+    function saveSession(empresa, promoterId, promoterName, initialState, initialZone, linea, step) {
+        try {
+            localStorage.setItem(SESSION_KEY, JSON.stringify({
+                empresa, promoterId, promoterName, initialState, initialZone, linea, step,
+                ts: Date.now()
+            }));
+        } catch(e) {}
+    }
+
+    function loadSession() {
+        try {
+            const raw = localStorage.getItem(SESSION_KEY);
+            if (!raw) return null;
+            const s = JSON.parse(raw);
+            // Sesión expira en 12 horas
+            if (Date.now() - s.ts > 12 * 60 * 60 * 1000) {
+                localStorage.removeItem(SESSION_KEY);
+                return null;
+            }
+            return s;
+        } catch(e) { return null; }
+    }
+
+    function clearSession() {
+        localStorage.removeItem(SESSION_KEY);
+    }
+
+    // ── Verificar si hay visita en progreso ───────────────────────
+    function hasVisitInProgress(empresaId, promoterId, lineaId) {
+        try {
+            const key = `precio-form-v2-${empresaId}-${promoterId}-${lineaId}`;
+            const raw = localStorage.getItem(key);
+            if (!raw) return false;
+            const data = JSON.parse(raw);
+            // Hay visita en progreso si tiene comercio seleccionado o items con datos
+            return !!(data.form?.trade || data.visitStarted ||
+                (data.form?.myitems?.some(i => i.price || i.presentation)) ||
+                (data.form?.competitoritems?.some(i => i.price || i.presentation)));
+        } catch(e) { return false; }
+    }
+
     // APP — orquesta los 4 pasos
     // ════════════════════════════════════════════════
     const App = () => {
-        const [step, setStep]                 = useState(1);
-        const [empresa, setEmpresa]           = useState(null);
-        const [promoterId, setPromoterId]     = useState('');
-        const [promoterName, setPromoterName] = useState('');
-        const [initialState, setInitialState] = useState('');
-        const [initialZone, setInitialZone]   = useState('');
-        const [linea, setLinea]               = useState(null);
+        // Restaurar sesión guardada al iniciar
+        const saved = loadSession();
+        const [step, setStep]                 = useState(saved?.step || 1);
+        const [empresa, setEmpresa]           = useState(saved?.empresa || null);
+        const [promoterId, setPromoterId]     = useState(saved?.promoterId || '');
+        const [promoterName, setPromoterName] = useState(saved?.promoterName || '');
+        const [initialState, setInitialState] = useState(saved?.initialState || '');
+        const [initialZone, setInitialZone]   = useState(saved?.initialZone || '');
+        const [linea, setLinea]               = useState(saved?.linea || null);
+        const [showResume, setShowResume]     = useState(false);
+
+        // Detectar visita en progreso al restaurar sesión
+        useEffect(() => {
+            if (saved && saved.step === 4 && saved.empresa && saved.promoterId && saved.linea) {
+                const inProgress = hasVisitInProgress(saved.empresa.id, saved.promoterId, saved.linea.id);
+                if (inProgress) setShowResume(true);
+            }
+        }, []);
+
+        const doLogout = () => {
+            clearSession();
+            setStep(1); setEmpresa(null); setPromoterId('');
+            setPromoterName(''); setLinea(null); setShowResume(false);
+        };
+
+        const onEmpresaLogin = (d) => {
+            setEmpresa(d);
+            setStep(2);
+            saveSession(d, '', '', '', '', null, 2);
+        };
+
+        const onPromotorLogin = (id, name, est, zon) => {
+            setPromoterId(id); setPromoterName(name);
+            setInitialState(est); setInitialZone(zon);
+            setStep(3);
+            saveSession(empresa, id, name, est, zon, null, 3);
+        };
+
+        const onSelectLinea = (l) => {
+            setLinea(l);
+            setStep(4);
+            setShowResume(false);
+            saveSession(empresa, promoterId, promoterName, initialState, initialZone, l, 4);
+        };
 
         return (
             <ErrorBoundary>
                 <div className="font-sans antialiased">
                     {step===1 && (
-                        <EmpresaLogin onEmpresaLogin={d=>{ setEmpresa(d); setStep(2); }}/>
+                        <EmpresaLogin onEmpresaLogin={onEmpresaLogin}/>
                     )}
                     {step===2 && empresa && (
                         <PromotorLogin empresa={empresa}
-                            onPromotorLogin={(id,name,est,zon)=>{ setPromoterId(id); setPromoterName(name); setInitialState(est); setInitialZone(zon); setStep(3); }}
-                            onBack={()=>setStep(1)}/>
+                            onPromotorLogin={onPromotorLogin}
+                            onBack={()=>{ setStep(1); saveSession(null,'','','','',null,1); }}/>
                     )}
                     {step===3 && empresa && (
                         <LineaSelector empresa={empresa} promoterId={promoterId} promoterName={promoterName}
-                            onSelectLinea={l=>{ setLinea(l); setStep(4); }}
-                            onLogout={()=>{ setStep(1); setEmpresa(null); setPromoterId(''); setPromoterName(''); setLinea(null); }}/>
+                            onSelectLinea={onSelectLinea}
+                            onLogout={doLogout}/>
                     )}
                     {step===4 && empresa && linea && (
+                        <>
+                        {showResume && (
+                            <div style={{position:'fixed',inset:0,zIndex:9999,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
+                                <div style={{background:'#1e1b4b',borderRadius:'20px',padding:'32px 28px',maxWidth:'360px',width:'100%',textAlign:'center',border:'1px solid #4f46e5'}}>
+                                    <div style={{fontSize:'2.5rem',marginBottom:'12px'}}>⏸️</div>
+                                    <div style={{color:'#c7d2fe',fontSize:'1rem',fontWeight:'700',marginBottom:'8px'}}>Visita en progreso</div>
+                                    <div style={{color:'#818cf8',fontSize:'.85rem',marginBottom:'24px',lineHeight:'1.5'}}>
+                                        Tienes datos guardados de una visita anterior.<br/>¿Deseas continuar donde la dejaste?
+                                    </div>
+                                    <button onClick={()=>setShowResume(false)}
+                                        style={{width:'100%',background:'#4f46e5',color:'#fff',border:'none',borderRadius:'12px',padding:'14px',fontSize:'.95rem',fontWeight:'700',cursor:'pointer',marginBottom:'10px'}}>
+                                        ✅ Continuar visita
+                                    </button>
+                                    <button onClick={()=>{
+                                        try { localStorage.removeItem(`precio-form-v2-${empresa.id}-${promoterId}-${linea.id}`); } catch(e){}
+                                        setShowResume(false);
+                                    }}
+                                        style={{width:'100%',background:'transparent',color:'#818cf8',border:'1px solid #4f46e5',borderRadius:'12px',padding:'12px',fontSize:'.85rem',cursor:'pointer'}}>
+                                        🗑️ Descartar y empezar nueva
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         <DataEntryScreen empresa={empresa} promoterName={promoterName} promoterId={promoterId}
                             linea={linea} initialState={initialState} initialZone={initialZone}
-                            onLogout={()=>{ setStep(1); setEmpresa(null); setPromoterId(''); setPromoterName(''); setLinea(null); }}
-                            onChangeLinea={()=>{ setLinea(null); setStep(3); }}/>
+                            onLogout={doLogout}
+                            onChangeLinea={()=>{ setLinea(null); setStep(3); saveSession(empresa, promoterId, promoterName, initialState, initialZone, null, 3); }}/>
+                        </>
                     )}
                 </div>
             </ErrorBoundary>
